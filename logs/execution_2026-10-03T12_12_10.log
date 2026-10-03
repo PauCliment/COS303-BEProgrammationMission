@@ -1,0 +1,50 @@
+[12:12:10] INFO BEProgMissionLogger | 	|____ Printing Timeline ____
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-01T09:26:37.921 (UTC) ; 2000-01-01T09:33:03.103 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-01T11:03:06.511 (UTC) ; 2000-01-01T11:11:08.212 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-01T22:59:21.691 (UTC) ; 2000-01-01T23:07:38.114 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-02T00:37:46.648 (UTC) ; 2000-01-02T00:43:35.568 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-02T10:04:32.476 (UTC) ; 2000-01-02T10:13:01.344 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-02T11:44:39.464 (UTC) ; 2000-01-02T11:48:39.842 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	|___________________________
+[12:12:10] INFO BEProgMissionLogger | 	|____ Printing Timeline ____
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-01T09:27:18.496 (UTC) ; 2000-01-01T09:34:48.525 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-01T11:04:41.143 (UTC) ; 2000-01-01T11:12:23.520 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-01T22:57:55.814 (UTC) ; 2000-01-01T23:06:10.106 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-02T00:35:58.594 (UTC) ; 2000-01-02T00:42:42.360 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-02T08:32:46.267 (UTC) ; 2000-01-02T08:33:56.224 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-02T10:05:45.674 (UTC) ; 2000-01-02T10:14:25.107 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-02T11:46:30.878 (UTC) ; 2000-01-02T11:49:49.275 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	|___________________________
+[12:12:10] INFO BEProgMissionLogger | 	|____ Printing Timeline ____
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-01T09:26:37.921 (UTC) ; 2000-01-01T09:33:03.103 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-01T09:27:18.496 (UTC) ; 2000-01-01T09:33:03.103 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-01T09:27:18.496 (UTC) ; 2000-01-01T09:34:48.525 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-01T11:03:06.511 (UTC) ; 2000-01-01T11:11:08.212 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-01T11:04:41.143 (UTC) ; 2000-01-01T11:11:08.212 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-01T11:04:41.143 (UTC) ; 2000-01-01T11:12:23.520 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-01T22:57:55.814 (UTC) ; 2000-01-01T23:06:10.106 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-01T22:59:21.691 (UTC) ; 2000-01-01T23:06:10.106 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-01T22:59:21.691 (UTC) ; 2000-01-01T23:07:38.114 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-02T00:35:58.594 (UTC) ; 2000-01-02T00:42:42.360 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-02T00:37:46.648 (UTC) ; 2000-01-02T00:42:42.360 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-02T00:37:46.648 (UTC) ; 2000-01-02T00:43:35.568 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-02T08:32:46.267 (UTC) ; 2000-01-02T08:33:56.224 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-02T10:04:32.476 (UTC) ; 2000-01-02T10:13:01.344 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-02T10:05:45.674 (UTC) ; 2000-01-02T10:13:01.344 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-02T10:05:45.674 (UTC) ; 2000-01-02T10:14:25.107 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| TLS-PASS [ 2000-01-02T11:44:39.464 (UTC) ; 2000-01-02T11:48:39.842 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-02T11:46:30.878 (UTC) ; 2000-01-02T11:48:39.842 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| PRS-PASS [ 2000-01-02T11:46:30.878 (UTC) ; 2000-01-02T11:49:49.275 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	|___________________________
+[12:12:10] INFO BEProgMissionLogger | 	|____ Printing Timeline ____
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-01T09:27:18.496 (UTC) ; 2000-01-01T09:33:03.103 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-01T11:04:41.143 (UTC) ; 2000-01-01T11:11:08.212 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-01T22:59:21.691 (UTC) ; 2000-01-01T23:06:10.106 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-02T00:37:46.648 (UTC) ; 2000-01-02T00:42:42.360 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-02T10:05:45.674 (UTC) ; 2000-01-02T10:13:01.344 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	| BOTH-PASS [ 2000-01-02T11:46:30.878 (UTC) ; 2000-01-02T11:48:39.842 (UTC) ]
+[12:12:10] INFO BEProgMissionLogger | 	|___________________________
+[12:12:20] INFO BEProgMissionLogger | VTS OEM file created : ..\Vts-WindowsNT-32bits-3.5.1\Data\BESupaero\Data\BE_Supaero_Satellite_Trajectory_OEM.txt
+[12:13:06] INFO BEProgMissionLogger | VTS AEM file created : ..\Vts-WindowsNT-32bits-3.5.1\Data\BESupaero\Data\BE_Supaero_Nadir_Pointing_AEM.txt
+[12:14:01] INFO BEProgMissionLogger | VTS AEM file created : ..\Vts-WindowsNT-32bits-3.5.1\Data\BESupaero\Data\BE_Supaero_Cinematic_Plan_AEM.txt
+[12:14:01] INFO BEProgMissionLogger | VTS MEM file created : ..\Vts-WindowsNT-32bits-3.5.1\Data\BESupaero\Data\BE_Supaero_Cinematic_Plan_Events_MEM.txt
