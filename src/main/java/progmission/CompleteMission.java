@@ -281,8 +281,6 @@ public class CompleteMission extends SimpleMission {
 		 */
 		// After the propagation, all the loggers can be used to create the access
 		// Timelines and serialize them
-		logger.info("Bruh in");
-		logger.info("Number of sites in sitesEventsLoggers: " + sitesEventsLoggers.size());
 		for (Entry<Site, ArrayList<CodedEventsLogger>> entry : sitesEventsLoggers.entrySet()) {
 			final Site site = entry.getKey();
 			final ArrayList<CodedEventsLogger> eventsLoggersList = entry.getValue();
@@ -297,8 +295,6 @@ public class CompleteMission extends SimpleMission {
 				eventsLoggersList.get(2)
 			);
 			this.accessPlan.put(site, siteAccessTimeline);
-			//logger.info("Bruh");
-			//ProjectUtils.printTimeline(siteAccessTimeline);
 
 			final String filename = generateSerializationName(site, HASH_CONSTANT_BE);
 			try {
@@ -310,7 +306,6 @@ public class CompleteMission extends SimpleMission {
 				logger.warn(e.getMessage());
 			}
 		}
-		logger.info("Bruh out");
 		return this.accessPlan;
 	}
 
@@ -769,7 +764,7 @@ public class CompleteMission extends SimpleMission {
 		final Timeline sunIncidenceTimeline = new Timeline(sunIncidenceDetector, timelineInterval, null);
 		final Timeline dazzlingTimeline = new Timeline(dazzlingDetector, timelineInterval, null);
 
-		ProjectUtils.printTimeline(visibilityTimeline);
+		
 		/**
 		 * Step 2 :
 		 * 

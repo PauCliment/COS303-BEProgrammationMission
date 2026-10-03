@@ -7,4 +7,5 @@
 Thumbs.db
 
 # Logs
-*.log
+/logs
+/accesses
