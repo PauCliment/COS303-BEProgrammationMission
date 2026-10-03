@@ -575,7 +575,7 @@ public class PatriusTuto {
 		// used previously when creating the GenericCodingEventDetector instances
 		final AndCriterion andCritetion = new AndCriterion("TLS-PASS", "PRS-PASS", "BOTH-PASS", "Toulouse and Paris in sight");
 
-		// Apply the AndCriterion to your Timeline 
+		// Apply the AndCriterion to your Timeline
 		andCritetion.applyTo(globalTimeline);
 		
 
