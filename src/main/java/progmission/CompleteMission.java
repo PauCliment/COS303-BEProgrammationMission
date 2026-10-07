@@ -239,7 +239,6 @@ public class CompleteMission extends SimpleMission {
 					// Load the timeline from the file and add it to the accessPlan
 					final Timeline siteAccessTimeline = loadSiteAccessTimeline(filename);
 					this.accessPlan.put(targetSite, siteAccessTimeline);
-					ProjectUtils.printTimeline(siteAccessTimeline);
 					loaded = true; // the Site has been loaded, no need to compute the access again
 					logger.info(filename + "has been loaded successfully!");
 				} catch (ClassNotFoundException | IOException e) {
@@ -298,6 +297,8 @@ public class CompleteMission extends SimpleMission {
 				eventsLoggersList.get(2)
 			);
 			this.accessPlan.put(site, siteAccessTimeline);
+			
+			ProjectUtils.printTimeline(siteAccessTimeline);
 
 			final String filename = generateSerializationName(site, HASH_CONSTANT_BE);
 			try {
@@ -689,22 +690,34 @@ public class CompleteMission extends SimpleMission {
 		return null;
 	}
 
-	private EventDetector createDazzlingConstraintDetector(Site targetSite) throws PatriusException {
+	private EventDetector createDazzlingConstraintDetector(Site targetSite) {
 
-    	// Vértice del ángulo: el objetivo en tierra
-    	final TopocentricFrame target = new TopocentricFrame(this.getEarth(), targetSite.getPoint(), targetSite.getName());
+		final TopocentricFrame target =
+			new TopocentricFrame(
+				this.getEarth(),
+				targetSite.getPoint(),
+				targetSite.getName()
+			);
 
-    	// El satélite (el propagador es un PVCoordinatesProvider)
-    	final PVCoordinatesProvider satellite = this.getSatellite().getPropagator();
+		try {
+			final PVCoordinatesProvider sun = CelestialBodyFactory.getSun();
 
-    	// El Sol
-    	final PVCoordinatesProvider sun = CelestialBodyFactory.getSun();
+			final double maxPhaseAngle =
+				MathLib.toRadians(ConstantsBE.MAX_SUN_PHASE_ANGLE);
 
-    	// Umbral en radianes (las constantes del BE están en grados)
-    	final double maxPhaseAngle = MathLib.toRadians(ConstantsBE.MAX_SUN_PHASE_ANGLE);
+			return new ThreeBodiesAngleDetector(
+				target,
+				sun,
+				ThreeBodiesAngleDetector.BodyOrder.FIRST,
+				maxPhaseAngle,
+				MAXCHECK_EVENTS,
+				TRESHOLD_EVENTS,
+				Action.CONTINUE
+			);
 
-    	return new ThreeBodiesAngleDetector(target, satellite, sun, maxPhaseAngle,
-        	    MAXCHECK_EVENTS, TRESHOLD_EVENTS, Action.CONTINUE);
+		} catch (PatriusException error) {
+			throw new IllegalStateException(error);
+		}
 	}
 	
 
@@ -999,7 +1012,7 @@ public class CompleteMission extends SimpleMission {
 		 * Step 1 :
 		 * Here we deal with event detection. 
 		 */
-		final EventDetector constraintXDetector = createVisibilityConstraintDetector(targetSite);
+		final EventDetector constraintXDetector = createDazzlingConstraintDetector(targetSite);
 
 		/**
 		 * Step 2 :
