@@ -18,6 +18,7 @@ import fr.cnes.sirius.patrius.attitudes.AttitudeProvider;
 import fr.cnes.sirius.patrius.attitudes.ConstantSpinSlew;
 import fr.cnes.sirius.patrius.attitudes.StrictAttitudeLegsSequence;
 import fr.cnes.sirius.patrius.bodies.BodyShape;
+import fr.cnes.sirius.patrius.bodies.CelestialBodyFactory;
 import fr.cnes.sirius.patrius.bodies.GeometricBodyShape;
 import fr.cnes.sirius.patrius.events.CodedEvent;
 import fr.cnes.sirius.patrius.events.CodedEventsLogger;
@@ -31,11 +32,13 @@ import fr.cnes.sirius.patrius.events.sensor.SensorVisibilityDetector;
 import fr.cnes.sirius.patrius.frames.FramesFactory;
 import fr.cnes.sirius.patrius.frames.TopocentricFrame;
 import fr.cnes.sirius.patrius.math.util.MathLib;
+import fr.cnes.sirius.patrius.orbits.pvcoordinates.PVCoordinatesProvider;
 import fr.cnes.sirius.patrius.propagation.analytical.KeplerianPropagator;
 import fr.cnes.sirius.patrius.propagation.events.ConstantRadiusProvider;
 import fr.cnes.sirius.patrius.propagation.events.EventDetector;
 import fr.cnes.sirius.patrius.propagation.events.EventDetector.Action;
 import fr.cnes.sirius.patrius.propagation.events.LocalRadiusProvider;
+import fr.cnes.sirius.patrius.propagation.events.ThreeBodiesAngleDetector;
 import fr.cnes.sirius.patrius.propagation.events.VariableRadiusProvider;
 import fr.cnes.sirius.patrius.time.AbsoluteDate;
 import fr.cnes.sirius.patrius.time.AbsoluteDateInterval;
@@ -721,13 +724,34 @@ public class CompleteMission extends SimpleMission {
 		return detector;
 	}
 
-	private EventDetector createDazzlingConstraintDetector() {
+	private EventDetector createDazzlingConstraintDetector(Site targetSite) {
 
-		/*
-		 * Create your detector and return it.
-		 */
+		final TopocentricFrame target =
+			new TopocentricFrame(
+				this.getEarth(),
+				targetSite.getPoint(),
+				targetSite.getName()
+			);
 
-		return null;
+		try {
+			final PVCoordinatesProvider sun = CelestialBodyFactory.getSun();
+
+			final double maxPhaseAngle =
+				MathLib.toRadians(ConstantsBE.MAX_SUN_PHASE_ANGLE);
+
+			return new ThreeBodiesAngleDetector(
+				target,
+				sun,
+				ThreeBodiesAngleDetector.BodyOrder.FIRST,
+				maxPhaseAngle,
+				MAXCHECK_EVENTS,
+				TRESHOLD_EVENTS,
+				Action.CONTINUE
+			);
+
+		} catch (PatriusException error) {
+			throw new IllegalStateException(error);
+		}
 	}
 	
 
@@ -1014,7 +1038,7 @@ public class CompleteMission extends SimpleMission {
 		 * Step 1 :
 		 * Here we deal with event detection. 
 		 */
-		final EventDetector constraintXDetector = createVisibilityConstraintDetector(targetSite);
+		final EventDetector constraintXDetector = createDazzlingConstraintDetector(targetSite);
 
 		/**
 		 * Step 2 :
@@ -1032,7 +1056,7 @@ public class CompleteMission extends SimpleMission {
 			constraintXDetector,
 			typeCode + "-START",
 			typeCode + "-END",
-			false,
+			true,
 			typeCode + "-WINDOW"
 		);
 		final CodedEventsLogger eventXLogger = new CodedEventsLogger();
