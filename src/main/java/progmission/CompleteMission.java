@@ -237,7 +237,6 @@ public class CompleteMission extends SimpleMission {
 					// Load the timeline from the file and add it to the accessPlan
 					final Timeline siteAccessTimeline = loadSiteAccessTimeline(filename);
 					this.accessPlan.put(targetSite, siteAccessTimeline);
-					ProjectUtils.printTimeline(siteAccessTimeline);
 					loaded = true; // the Site has been loaded, no need to compute the access again
 					logger.info(filename + "has been loaded successfully!");
 				} catch (ClassNotFoundException | IOException e) {
@@ -296,6 +295,7 @@ public class CompleteMission extends SimpleMission {
 				eventsLoggersList.get(2)
 			);
 			this.accessPlan.put(site, siteAccessTimeline);
+			ProjectUtils.printTimeline(siteAccessTimeline);
 
 			final String filename = generateSerializationName(site, HASH_CONSTANT_BE);
 			try {
@@ -981,8 +981,7 @@ public class CompleteMission extends SimpleMission {
 		final String typeCode = "INCIDENCE";
 
 		// Create the solar illumination detector
-		final EventDetector constraintXDetector =
-				createIncidenceConstraintDetector(targetSite);
+		final EventDetector constraintXDetector = createIncidenceConstraintDetector(targetSite);
 
 		// Add detector to the propagator
 		this.getSatellite().getPropagator().addEventDetector(constraintXDetector);
@@ -999,8 +998,7 @@ public class CompleteMission extends SimpleMission {
 
 		final CodedEventsLogger eventXLogger = new CodedEventsLogger();
 
-		final EventDetector eventXDetector =
-				eventXLogger.monitorDetector(codingEventXDetector);
+		final EventDetector eventXDetector = eventXLogger.monitorDetector(codingEventXDetector);
 
 		// Add logger to the propagator
 		this.getSatellite().getPropagator().addEventDetector(eventXDetector);
