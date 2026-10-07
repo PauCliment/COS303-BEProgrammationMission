@@ -41,6 +41,7 @@ import fr.cnes.sirius.patrius.time.AbsoluteDate;
 import fr.cnes.sirius.patrius.time.AbsoluteDateInterval;
 import fr.cnes.sirius.patrius.time.AbsoluteDateIntervalsList;
 import fr.cnes.sirius.patrius.utils.exception.PatriusException;
+import fr.cnes.sirius.patrius.propagation.events.ThreeBodiesAngleDetector;
 import reader.Site;
 import utils.ConstantsBE;
 import utils.LogUtils;
@@ -677,13 +678,47 @@ public class CompleteMission extends SimpleMission {
 		return detector;
 	}
 
-	private EventDetector createIncidenceConstraintDetector() {
+	private EventDetector createIncidenceConstraintDetector(Site targetSite) {
 
-		/*
-		 * Create your detector and return it.
-		 */
+		 // Local frame of the observation site
+		final TopocentricFrame sitePvProv = new TopocentricFrame(
+				this.getEarth(),
+				targetSite.getPoint(),
+				targetSite.getName()
+		);
 
-		return null;
+		// ThreeBodiesAngleDetector calculates:
+		// angle(Sun -> Site, Earth -> Site)
+		// which is the angle at the Site between:
+		// Site -> Sun and Site -> Earth.
+		//
+		// Since Site -> Earth is opposite to the local zenith:
+		//
+		//     detectorAngle = 180° - solarIncidenceAngle
+		//
+		// We want:
+		//
+		//     solarIncidenceAngle <= MAX_SUN_INCIDENCE_ANGLE
+		//
+		// therefore:
+		//
+		//     detectorAngle >= 180° - MAX_SUN_INCIDENCE_ANGLE
+
+		final double thresholdAngle = MathLib.toRadians(
+				180.0 - ConstantsBE.MAX_SUN_INCIDENCE_ANGLE
+		);
+
+		final EventDetector detector = new ThreeBodiesAngleDetector(
+				this.getSun(),
+				sitePvProv,
+				this.getEarth(),
+				thresholdAngle,
+				MAXCHECK_EVENTS,
+				TRESHOLD_EVENTS,
+				Action.CONTINUE
+		);
+
+		return detector;
 	}
 
 	private EventDetector createDazzlingConstraintDetector() {
@@ -943,37 +978,31 @@ public class CompleteMission extends SimpleMission {
 
 	private CodedEventsLogger createIncidenceConstraintLogger(Site targetSite) {
 
-		final String typeCode = "INCIDENCE"; 
+		final String typeCode = "INCIDENCE";
 
-		/**
-		 * Step 1 :
-		 * Here we deal with event detection. 
-		 */
-		final EventDetector constraintXDetector = createVisibilityConstraintDetector(targetSite);
+		// Create the solar illumination detector
+		final EventDetector constraintXDetector =
+				createIncidenceConstraintDetector(targetSite);
 
-		/**
-		 * Step 2 :
-		 * When you have your detector, you can add it on an Orbit Propagator such as
-		 * the KeplerianPropagator of your Satellite.
-		 */
+		// Add detector to the propagator
 		this.getSatellite().getPropagator().addEventDetector(constraintXDetector);
 
-		/**
-		 * Step 3 :
-		 * Now you need to use the detector to create CodedEvent objects to actually
-		 * detect the events and visualize them.
-		 */
-		final GenericCodingEventDetector codingEventXDetector = new GenericCodingEventDetector(
-			constraintXDetector,
-			typeCode + "-START",
-			typeCode + "-END",
-			true,
-			typeCode + "-WINDOW"
-		);
+		// Create coded events associated with the detector
+		final GenericCodingEventDetector codingEventXDetector =
+				new GenericCodingEventDetector(
+						constraintXDetector,
+						typeCode + "-START",
+						typeCode + "-END",
+						true,
+						typeCode + "-WINDOW"
+				);
+
 		final CodedEventsLogger eventXLogger = new CodedEventsLogger();
-		final EventDetector eventXDetector = eventXLogger.monitorDetector(codingEventXDetector);
-		// Then you add your logger to the propagator, it will monitor the event coded
-		// by the codingEventDetector
+
+		final EventDetector eventXDetector =
+				eventXLogger.monitorDetector(codingEventXDetector);
+
+		// Add logger to the propagator
 		this.getSatellite().getPropagator().addEventDetector(eventXDetector);
 
 		return eventXLogger;
