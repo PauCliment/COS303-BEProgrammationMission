@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.List;
+import java.util.TreeMap;
 
 import org.slf4j.Logger;
 
@@ -44,6 +46,8 @@ import fr.cnes.sirius.patrius.time.AbsoluteDate;
 import fr.cnes.sirius.patrius.time.AbsoluteDateInterval;
 import fr.cnes.sirius.patrius.time.AbsoluteDateIntervalsList;
 import fr.cnes.sirius.patrius.utils.exception.PatriusException;
+import fr.cnes.sirius.patrius.attitudes.TargetGroundPointing;
+import fr.cnes.sirius.patrius.math.geometry.euclidean.threed.Vector3D;
 import reader.Site;
 import utils.ConstantsBE;
 import utils.LogUtils;
@@ -450,8 +454,7 @@ public class CompleteMission extends SimpleMission {
 	 * @throws PatriusException If a {@link PatriusException} occurs during the
 	 *                          computations
 	 */
-	public Map<Site, AttitudeLawLeg> computeObservationPlan() throws PatriusException {
-		/**
+			/**
 		 * Here are the big constraints and informations you need to build an
 		 * observation plan.
 		 * 
@@ -492,36 +495,8 @@ public class CompleteMission extends SimpleMission {
 		 * we give you which law to use for observation legs : TargetGroundPointing.
 		 * 
 		 */
-		logger.info("============= Computing Observation Plan =============");
-		/*
-		 * We provide a basic and incomplete code that you can use to compute the
-		 * observation plan.
-		 * 
-		 * Here the only thing we do is printing all the access opportunities using the
-		 * Timeline objects. We get a list of AbsoluteDateInterval from the Timelines,
-		 * which is the basis of the creation of AttitudeLawLeg objects since you need
-		 * an AbsoluteDateInterval or two AbsoluteDates to do it.
-		 */
-		for (final Entry<Site, Timeline> entry : this.accessPlan.entrySet()) {
-			// Scrolling through the entries of the accessPlan
-			// Getting the target Site
-			final Site target = entry.getKey();
-			logger.info("Current target site : " + target.getName());
-			// Getting its access Timeline
-			final Timeline timeline = entry.getValue();
-			// Getting the access intervals
-			final AbsoluteDateIntervalsList accessIntervals = new AbsoluteDateIntervalsList();
-			for (final Phenomenon accessWindow : timeline.getPhenomenaList()) {
-				// The Phenomena are sorted chronologically so the accessIntervals List is too
-				final AbsoluteDateInterval accessInterval = accessWindow.getTimespan();
-				accessIntervals.add(accessInterval);
-				logger.info(accessInterval.toString());
 
-				// Use this method to create your observation leg, see more help inside the
-				// method.
-				final AttitudeLaw observationLaw = createObservationLaw(target);
-
-				/**
+							/**
 				 * Now that you have your observation law, you can compute at any AbsoluteDate
 				 * the Attitude of your Satellite pointing the target (using the getAttitude()
 				 * method). You can use those Attitudes to compute the duration of a slew from
@@ -534,28 +509,8 @@ public class CompleteMission extends SimpleMission {
 				 * interval and finally add this leg to the observation plan.
 				 */
 				/*
-				 * Here is an example of how to compute an Attitude. You need a
-				 * PVCoordinatePropagator (which we provide we the method
-				 * SimpleMission#createDefaultPropagator()), an AbsoluteDate and a Frame (which
-				 * we provide with this.getEME2000()).
-				 */
-				// Getting the begining/end of the accessIntervall as AbsoluteDate objects
-				final AbsoluteDate date1 = accessInterval.getLowerData();
-				final AbsoluteDate date2 = accessInterval.getUpperData();
-				final Attitude attitude1 = observationLaw.getAttitude(this.createDefaultPropagator(), date1,
-						this.getEme2000());
-				final Attitude attitude2 = observationLaw.getAttitude(this.createDefaultPropagator(), date2,
-						this.getEme2000());
-				/*
-				 * Now here is an example of code showing how to compute the duration of the
-				 * slew from attitude1 to attitude2 Here we compare two Attitudes coming from
-				 * the same AttitudeLaw which is a TargetGroundPointing so the
-				 */
-				final double slew12Duration = this.getSatellite().computeSlewDuration(attitude1, attitude2);
-				logger.info("Maximum possible duration of the slew : " + slew12Duration);
-				final double actualDuration = date2.durationFrom(date1);
-				logger.info("Actual duration of the slew : " + actualDuration);
-				/**
+
+								/**
 				 * Of course, here the actual duration is less than the maximum possible
 				 * duration because the TargetGroundPointing mode is a very slow one and the
 				 * Satellite is very agile. But sometimes when trying to perform a slew from one
@@ -581,19 +536,108 @@ public class CompleteMission extends SimpleMission {
 				 */
 				// Here we use the middle of the accessInterval to define our dates of
 				// observation
-				final AbsoluteDate middleDate = accessInterval.getMiddleDate();
-				final AbsoluteDate obsStart = middleDate.shiftedBy(-ConstantsBE.INTEGRATION_TIME / 2);
-				final AbsoluteDate obsEnd = middleDate.shiftedBy(ConstantsBE.INTEGRATION_TIME / 2);
-				final AbsoluteDateInterval obsInterval = new AbsoluteDateInterval(obsStart, obsEnd);
-				// Then, we create our AttitudeLawLeg, that we name using the name of the target
-				final String legName = "OBS_" + target.getName();
-				final AttitudeLawLeg obsLeg = new AttitudeLawLeg(observationLaw, obsInterval, legName);
 
-				// Finally, we add our leg to the plan
-				this.observationPlan.put(target, obsLeg);
+	public Map<Site, AttitudeLawLeg> computeObservationPlan() throws PatriusException {
 
+		logger.info("============= Computing Observation Plan =============");
+
+		this.observationPlan.clear();
+
+		// Constant worst-case slew duration (plus a tiny safety margin) required
+		// between two consecutive observations, and between an observation and the
+		// nadir law at the beginning / end of the mission
+		final double minGap = this.getSatellite().getMaxSlewDuration() + 0.1;
+		final double obsDuration = ConstantsBE.INTEGRATION_TIME;
+		// Sampling step (s) of the possible observation start dates in a window
+		final double step = 5.0;
+
+		// One single propagator reused for all the incidence computations
+		final KeplerianPropagator propagator = this.createDefaultPropagator();
+
+		// Hierarchical greedy: sites with the highest score are handled first
+		final List<Site> sites = new ArrayList<>(this.accessPlan.keySet());
+		sites.sort((a, b) -> Double.compare(b.getScore(), a.getScore()));
+
+		// Scheduled observations, chronologically sorted (key = observation start)
+		final TreeMap<AbsoluteDate, Site> scheduled = new TreeMap<>();
+
+		for (final Site target : sites) {
+
+			final TopocentricFrame siteFrame = new TopocentricFrame(this.getEarth(), target.getPoint(),
+					target.getName());
+
+			// Best feasible observation found so far for this site
+			AbsoluteDate bestStart = null;
+			double bestValue = 0.0;
+
+			for (final Phenomenon accessWindow : this.accessPlan.get(target).getPhenomenaList()) {
+				final AbsoluteDate firstStart = accessWindow.getTimespan().getLowerData();
+				// Duration over which the observation start date can slide in the window
+				final double span = accessWindow.getTimespan().getUpperData().durationFrom(firstStart) - obsDuration;
+				if (span < 0) {
+					continue; // window too short to contain a full observation
+				}
+
+				// The last sample is clamped to the latest possible start of the window
+				for (double offset = 0.0; offset < span + step; offset += step) {
+					final AbsoluteDate start = firstStart.shiftedBy(Math.min(offset, span));
+					final AbsoluteDate end = start.shiftedBy(obsDuration);
+					final AbsoluteDate middle = start.shiftedBy(obsDuration / 2);
+
+					// Cinematic check with the nadir law at the mission start / end
+					boolean free = start.durationFrom(this.getStartDate()) >= minGap
+							&& this.getEndDate().durationFrom(end) >= minGap;
+
+					// Cinematic check with the previous scheduled observation
+					final Entry<AbsoluteDate, Site> previous = scheduled.floorEntry(start);
+					if (previous != null
+							&& start.durationFrom(this.observationPlan.get(previous.getValue()).getEnd()) < minGap) {
+						free = false;
+					}
+
+					// Cinematic check with the next scheduled observation
+					final Entry<AbsoluteDate, Site> next = scheduled.ceilingEntry(start);
+					if (next != null && next.getKey().durationFrom(end) < minGap) {
+						free = false;
+					}
+
+					if (!free) {
+						continue;
+					}
+
+					// Value = site score * cos(incidence angle) at the middle of the observation.
+					// cos(incidence) = sin(elevation of the satellite seen from the site)
+					final Vector3D satPosition = propagator.getPVCoordinates(middle, this.getEme2000())
+							.getPosition();
+					final double elevation = siteFrame.getElevation(satPosition, this.getEme2000(), middle);
+					final double value = target.getScore() * MathLib.sin(elevation);
+
+					if (value > bestValue) {
+						bestValue = value;
+						bestStart = start;
+					}
+				}
 			}
 
+			// If a feasible observation exists, insert it in the plan
+			if (bestStart != null) {
+				final AbsoluteDate bestEnd = bestStart.shiftedBy(obsDuration);
+				final AttitudeLaw observationLaw = createObservationLaw(target);
+				final AttitudeLawLeg obsLeg = new AttitudeLawLeg(observationLaw,
+						new AbsoluteDateInterval(bestStart, bestEnd), "OBS_" + target.getName());
+				this.observationPlan.put(target, obsLeg);
+				scheduled.put(bestStart, target);
+			}
+		}
+
+		// Console display of the final plan, in chronological order
+		logger.info("Final observation plan after all insertions :");
+		int index = 1;
+		for (final Entry<AbsoluteDate, Site> entry : scheduled.entrySet()) {
+			final AttitudeLawLeg leg = this.observationPlan.get(entry.getValue());
+			logger.info("Observation n°" + index + " : " + entry.getValue().getName() + " - [ " + leg.getDate()
+					+ " ; " + leg.getEnd() + " ]");
+			index++;
 		}
 
 		return this.observationPlan;
@@ -738,8 +782,8 @@ public class CompleteMission extends SimpleMission {
 	 * @param target Input target {@link Site}
 	 * @return An {@link AttitudeLawLeg} adapted to the observation.
 	 */
-	private AttitudeLaw createObservationLaw(Site target) {
-		/**
+
+			/**
 		 * To perform an observation, the satellite needs to point the target for a
 		 * fixed duration.
 		 * 
@@ -753,10 +797,18 @@ public class CompleteMission extends SimpleMission {
 		 * you use the following constructor : TargetGroundPointing(BodyShape, Vector3D,
 		 * Vector3D, Vector3D) specifying the line of sight axis and the normal axis.
 		 */
-		/*
-		 * Complete the code below to create your observation law and return it
-		 */
-		return null;
+
+	private AttitudeLaw createObservationLaw(Site target) throws PatriusException {
+
+		// Target position expressed in the Earth-fixed frame
+		final Vector3D targetPosition = this.getEarth().transform(target.getPoint());
+
+		// Satellite axis pointing the target (sensor boresight) and normal axis.
+		// They must be consistent with the sensor definition in the Satellite class.
+		final Vector3D lineOfSight = Vector3D.PLUS_K;
+		final Vector3D normalAxis = Vector3D.PLUS_I;
+
+		return new TargetGroundPointing(this.getEarth(), targetPosition, lineOfSight, normalAxis);
 	}
 
 	/**
