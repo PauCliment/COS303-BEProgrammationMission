@@ -49,7 +49,7 @@ public class CompleteMissionMain {
 		// Observation objects that can be achieved one after each other by the
 		// satellite without breaking the cinematic constraints imposed by the
 		// satellite agility.
-		/*
+		
 		Map<Site, AttitudeLawLeg> observationPlan = mission.computeObservationPlan();
 		logger.info("Observation plan : " + observationPlan.toString());
 
@@ -77,7 +77,7 @@ public class CompleteMissionMain {
 		
 		// Finally, we write the VTS outputs to visualize and validate our plan
 		mission.generateVTSVisualization(cinematicPlan);
-		*/
+		
 		
 		mission.createSimpleVTSVisualization();
 
