@@ -542,12 +542,14 @@ public class CompleteMission extends SimpleMission {
 		logger.info("============= Computing Observation Plan =============");
 
 		this.observationPlan.clear();
+		double totalValue = 0.0; // Score of the final observation plan
 
 		// Constant worst-case slew duration (plus a tiny safety margin) required
 		// between two consecutive observations, and between an observation and the
 		// nadir law at the beginning / end of the mission
 		final double minGap = this.getSatellite().getMaxSlewDuration() + 0.1;
 		final double obsDuration = ConstantsBE.INTEGRATION_TIME;
+
 		// Sampling step (s) of the possible observation start dates in a window
 		final double step = 5.0;
 
@@ -561,20 +563,23 @@ public class CompleteMission extends SimpleMission {
 		// Scheduled observations, chronologically sorted (key = observation start)
 		final TreeMap<AbsoluteDate, Site> scheduled = new TreeMap<>();
 
+		// Loop through the potential target sites in descending order of score
 		for (final Site target : sites) {
 
-			final TopocentricFrame siteFrame = new TopocentricFrame(this.getEarth(), target.getPoint(),
-					target.getName());
+			final TopocentricFrame siteFrame = new TopocentricFrame(this.getEarth(), target.getPoint(), target.getName());
 
 			// Best feasible observation found so far for this site
 			AbsoluteDate bestStart = null;
 			double bestValue = 0.0;
 
+			// Loop through all possible accesses for this target (to get the one with maximum elevation)
 			for (final Phenomenon accessWindow : this.accessPlan.get(target).getPhenomenaList()) {
+
 				final AbsoluteDate firstStart = accessWindow.getTimespan().getLowerData();
+
 				// Duration over which the observation start date can slide in the window
 				final double span = accessWindow.getTimespan().getUpperData().durationFrom(firstStart) - obsDuration;
-				if (span < 0) {
+				if (span <= 0) {
 					continue; // window too short to contain a full observation
 				}
 
@@ -585,13 +590,13 @@ public class CompleteMission extends SimpleMission {
 					final AbsoluteDate middle = start.shiftedBy(obsDuration / 2);
 
 					// Cinematic check with the nadir law at the mission start / end
+					// Ensures the satellite can slew from nadir to observation and vice-versa
 					boolean free = start.durationFrom(this.getStartDate()) >= minGap
 							&& this.getEndDate().durationFrom(end) >= minGap;
 
 					// Cinematic check with the previous scheduled observation
 					final Entry<AbsoluteDate, Site> previous = scheduled.floorEntry(start);
-					if (previous != null
-							&& start.durationFrom(this.observationPlan.get(previous.getValue()).getEnd()) < minGap) {
+					if (previous != null && start.durationFrom(this.observationPlan.get(previous.getValue()).getEnd()) < minGap) {
 						free = false;
 					}
 
@@ -607,8 +612,7 @@ public class CompleteMission extends SimpleMission {
 
 					// Value = site score * cos(incidence angle) at the middle of the observation.
 					// cos(incidence) = sin(elevation of the satellite seen from the site)
-					final Vector3D satPosition = propagator.getPVCoordinates(middle, this.getEme2000())
-							.getPosition();
+					final Vector3D satPosition = propagator.getPVCoordinates(middle, this.getEme2000()).getPosition();
 					final double elevation = siteFrame.getElevation(satPosition, this.getEme2000(), middle);
 					final double value = target.getScore() * MathLib.sin(elevation);
 
@@ -622,21 +626,21 @@ public class CompleteMission extends SimpleMission {
 			// If a feasible observation exists, insert it in the plan
 			if (bestStart != null) {
 				final AbsoluteDate bestEnd = bestStart.shiftedBy(obsDuration);
+				final AbsoluteDateInterval bestInterval = new AbsoluteDateInterval(bestStart, bestEnd);
 				final AttitudeLaw observationLaw = createObservationLaw(target);
-				final AttitudeLawLeg obsLeg = new AttitudeLawLeg(observationLaw,
-						new AbsoluteDateInterval(bestStart, bestEnd), "OBS_" + target.getName());
+				final AttitudeLawLeg obsLeg = new AttitudeLawLeg(observationLaw, bestInterval, "OBS_" + target.getName());
 				this.observationPlan.put(target, obsLeg);
 				scheduled.put(bestStart, target);
+				totalValue += bestValue;
 			}
 		}
 
 		// Console display of the final plan, in chronological order
-		logger.info("Final observation plan after all insertions :");
+		logger.info("Final observation plan (Score: " + totalValue + ") :");
 		int index = 1;
 		for (final Entry<AbsoluteDate, Site> entry : scheduled.entrySet()) {
 			final AttitudeLawLeg leg = this.observationPlan.get(entry.getValue());
-			logger.info("Observation n°" + index + " : " + entry.getValue().getName() + " - [ " + leg.getDate()
-					+ " ; " + leg.getEnd() + " ]");
+			logger.info("Observation n." + index + " : " + entry.getValue().getName() + " - Interval: [" + leg.getDate() + " - " + leg.getEnd() + "]");
 			index++;
 		}
 
