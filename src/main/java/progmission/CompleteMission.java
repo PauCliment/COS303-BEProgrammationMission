@@ -148,6 +148,13 @@ public class CompleteMission extends SimpleMission {
 	private final Map<Site, AttitudeLawLeg> observationPlan;
 
 	/**
+	 * This {@link TreeMap} will be used to keep an order for each site's programmed
+	 * observation.
+	 * Scheduled observations, chronologically sorted (key = observation start)
+	 */
+	private final TreeMap<AbsoluteDate, Site> scheduledObservations;
+
+	/**
 	 * {@link StrictAttitudeLegsSequence} representing the cinematic plan during the
 	 * whole mission horizon. Each {@link AttitudeLeg} corresponds to a diffrent
 	 * attitude law : either nadir pointing, target pointing or a slew between two
@@ -178,6 +185,7 @@ public class CompleteMission extends SimpleMission {
 		// the "compute****Plan()" methods.
 		this.accessPlan = new HashMap<>();
 		this.observationPlan = new HashMap<>();
+		this.scheduledObservations = new TreeMap<>();
 		this.cinematicPlan = new StrictAttitudeLegsSequence<>();
 
 	}
@@ -378,53 +386,83 @@ public class CompleteMission extends SimpleMission {
 		 * before. We know we have to the time to perform the slew thanks to the
 		 * cinematic checks we already did during the observation plan computation.
 		 */
-		// Getting the Paris Site
-		final Site paris = this.getSiteList().get(0);
-		// Getting the associated observation leg defined previously
-		final AttitudeLeg parisObsLeg = observationPlan.get(paris);
 
-		// Getting our nadir law
-		final AttitudeLaw nadirLaw = this.getSatellite().getDefaultAttitudeLaw();
-
-		// Getting all the dates we need to compute our slews
-		final AbsoluteDate start = this.getStartDate();
-		final AbsoluteDate end = this.getEndDate();
-		final AbsoluteDate obsStart = parisObsLeg.getDate();
-		final AbsoluteDate obsEnd = parisObsLeg.getEnd();
-
-		// For the slew nadir => paris and paris => nadir, we will use the maximum
-		// duration because we have a lot of time here. In practice, you will use either
-		// the maximum possible time if you have nothing else planned around or the
-		// available time coming from the duration until next observation programmed.
-		final AbsoluteDate endNadirLaw1 = obsStart.shiftedBy(-getSatellite().getMaxSlewDuration());
-		final AbsoluteDate startNadirLaw2 = obsEnd.shiftedBy(+getSatellite().getMaxSlewDuration());
+		this.cinematicPlan.clear();
 
 		// The propagator will be used to compute Attitudes
 		final KeplerianPropagator propagator = this.createDefaultPropagator();
 
-		// Computing the Attitudes used to compute the slews
-		final Attitude startObsAttitude = parisObsLeg.getAttitude(propagator, obsStart, getEme2000());
-		final Attitude endObsAttitude = parisObsLeg.getAttitude(propagator, obsEnd, getEme2000());
-		final Attitude endNadir1Attitude = nadirLaw.getAttitude(propagator, endNadirLaw1, getEme2000());
-		final Attitude startNadir2Attitude = nadirLaw.getAttitude(propagator, startNadirLaw2, getEme2000());
+		// Get the Nadir attitude law
+		final AttitudeLaw nadirLaw = this.getSatellite().getDefaultAttitudeLaw();
 
-		// Finally computing the slews
-		// From nadir law 1 to Paris observation
-		final ConstantSpinSlew slew1 = new ConstantSpinSlew(endNadir1Attitude, startObsAttitude, "Slew_Nadir_to_Paris");
-		// From Paris observation to nadir law 2
-		final ConstantSpinSlew slew2 = new ConstantSpinSlew(endObsAttitude, startNadir2Attitude, "Slew_Paris_to_Nadir");
+		// Get the mission plan start dates
+		final AbsoluteDate planStart = this.getStartDate();
+		final Site firstSite = this.scheduledObservations.firstEntry().getValue();
+		final AttitudeLeg firstObs = observationPlan.get(firstSite);
+		final AbsoluteDate obsStart = firstObs.getDate();
 
-		// We create our two Nadir legs using the dates we computed
-		final AttitudeLawLeg nadir1 = new AttitudeLawLeg(nadirLaw, start, endNadirLaw1, "Nadir_Law_1");
-		final AttitudeLawLeg nadir2 = new AttitudeLawLeg(nadirLaw, startNadirLaw2, end, "Nadir_Law_2");
+		// Get the first slew date and find the initial attitudes
+		final AbsoluteDate slewStart = obsStart.shiftedBy(-getSatellite().getMaxSlewDuration());
+		final Attitude slewStartAtt = nadirLaw.getAttitude(propagator, slewStart, getEme2000());
+		final Attitude obsStartAtt = firstObs.getAttitude(propagator, obsStart, getEme2000());
 
-		// Finally we can add all those legs to our cinametic plan, in the chronological
-		// order
-		this.cinematicPlan.add(nadir1);
-		this.cinematicPlan.add(slew1);
-		this.cinematicPlan.add(parisObsLeg);
-		this.cinematicPlan.add(slew2);
-		this.cinematicPlan.add(nadir2);
+		// Compute and add the initial nadir and slew
+		final AttitudeLawLeg startNadir = new AttitudeLawLeg(nadirLaw, planStart, slewStart, "NADIR-Initial");
+		final ConstantSpinSlew startSlew = new ConstantSpinSlew(slewStartAtt, obsStartAtt, "SLEW-NADIR-TO-" + firstSite.getName());
+		this.cinematicPlan.add(startNadir);
+		this.cinematicPlan.add(startSlew);
+
+		// Go through all the observations
+		Entry<AbsoluteDate, Site> previousObsEntry = null;
+		AttitudeLawLeg previousObsLeg = null;
+		for (final Entry<AbsoluteDate, Site> entry : scheduledObservations.entrySet()) {
+
+			// Get the current observation window
+			final AttitudeLawLeg obsLeg = this.observationPlan.get(entry.getValue());
+			
+			// Add the slew to get to the current observation window
+			if (entry.getKey() != scheduledObservations.firstKey() && previousObsEntry != null) {
+				// Get the starting slew state 
+				final AbsoluteDate fromDate = previousObsLeg.getEnd();	
+				final Site fromTarget = previousObsEntry.getValue();
+				final Attitude fromAtt = previousObsLeg.getAttitude(propagator, fromDate, getEme2000());
+				
+				// Get the target slew state
+				final AbsoluteDate toDate = entry.getKey();		
+				final Site toTarget = entry.getValue();	
+				final Attitude toAtt = obsLeg.getAttitude(propagator, toDate, getEme2000());
+
+				// Create and add the slew
+				final String slewCode = "SLEW-" + fromTarget.getName() + "-TO-" + toTarget.getName();
+				final ConstantSpinSlew slew = new ConstantSpinSlew(fromAtt, toAtt, slewCode);
+				this.cinematicPlan.add(slew);
+			}
+
+			// Add the pointing law for the current observation
+			this.cinematicPlan.add(obsLeg);
+
+			// Update the previous observation
+			previousObsEntry = entry;
+			previousObsLeg = obsLeg;
+
+		}
+
+		// Get the mission plan end dates
+		final AbsoluteDate planEnd = this.getEndDate();
+		final Site lastSite = this.scheduledObservations.lastEntry().getValue();
+		final AttitudeLeg lastObs = observationPlan.get(lastSite);
+		final AbsoluteDate obsEnd = lastObs.getEnd();
+
+		// Get the last slew date and find the final attitudes
+		final AbsoluteDate slewEnd = obsEnd.shiftedBy(+getSatellite().getMaxSlewDuration());
+		final Attitude obsEndAtt = lastObs.getAttitude(propagator, obsEnd, getEme2000());
+		final Attitude slewEndtAtt = nadirLaw.getAttitude(propagator, slewEnd, getEme2000());
+
+		// Compute and add the final nadir and slew
+		final ConstantSpinSlew endSlew = new ConstantSpinSlew(obsEndAtt, slewEndtAtt, "SLEW-" + lastSite.getName() + "TO-NADIR");
+		final AttitudeLawLeg endNadir = new AttitudeLawLeg(nadirLaw, slewEnd, planEnd, "NADIR-Final");
+		this.cinematicPlan.add(endSlew);
+		this.cinematicPlan.add(endNadir);
 
 		/**
 		 * Now your job is finished, the two following methods will finish the job for
@@ -437,6 +475,7 @@ public class CompleteMission extends SimpleMission {
 		 */
 		return this.cinematicPlan;
 	}
+
 
 	/**
 	 * [COMPLETE THIS METHOD TO ACHIEVE YOUR PROJECT]
@@ -542,6 +581,7 @@ public class CompleteMission extends SimpleMission {
 		logger.info("============= Computing Observation Plan =============");
 
 		this.observationPlan.clear();
+		this.scheduledObservations.clear();
 		double totalValue = 0.0; // Score of the final observation plan
 
 		// Constant worst-case slew duration (plus a tiny safety margin) required
@@ -559,9 +599,6 @@ public class CompleteMission extends SimpleMission {
 		// Hierarchical greedy: sites with the highest score are handled first
 		final List<Site> sites = new ArrayList<>(this.accessPlan.keySet());
 		sites.sort((a, b) -> Double.compare(b.getScore(), a.getScore()));
-
-		// Scheduled observations, chronologically sorted (key = observation start)
-		final TreeMap<AbsoluteDate, Site> scheduled = new TreeMap<>();
 
 		// Loop through the potential target sites in descending order of score
 		for (final Site target : sites) {
@@ -595,13 +632,13 @@ public class CompleteMission extends SimpleMission {
 							&& this.getEndDate().durationFrom(end) >= minGap;
 
 					// Cinematic check with the previous scheduled observation
-					final Entry<AbsoluteDate, Site> previous = scheduled.floorEntry(start);
+					final Entry<AbsoluteDate, Site> previous = scheduledObservations.floorEntry(start);
 					if (previous != null && start.durationFrom(this.observationPlan.get(previous.getValue()).getEnd()) < minGap) {
 						free = false;
 					}
 
 					// Cinematic check with the next scheduled observation
-					final Entry<AbsoluteDate, Site> next = scheduled.ceilingEntry(start);
+					final Entry<AbsoluteDate, Site> next = scheduledObservations.ceilingEntry(start);
 					if (next != null && next.getKey().durationFrom(end) < minGap) {
 						free = false;
 					}
@@ -630,7 +667,7 @@ public class CompleteMission extends SimpleMission {
 				final AttitudeLaw observationLaw = createObservationLaw(target);
 				final AttitudeLawLeg obsLeg = new AttitudeLawLeg(observationLaw, bestInterval, "OBS_" + target.getName());
 				this.observationPlan.put(target, obsLeg);
-				scheduled.put(bestStart, target);
+				scheduledObservations.put(bestStart, target);
 				totalValue += bestValue;
 			}
 		}
@@ -638,7 +675,7 @@ public class CompleteMission extends SimpleMission {
 		// Console display of the final plan, in chronological order
 		logger.info("Final observation plan (Score: " + totalValue + ") :");
 		int index = 1;
-		for (final Entry<AbsoluteDate, Site> entry : scheduled.entrySet()) {
+		for (final Entry<AbsoluteDate, Site> entry : scheduledObservations.entrySet()) {
 			final AttitudeLawLeg leg = this.observationPlan.get(entry.getValue());
 			logger.info("Observation n." + index + " : " + entry.getValue().getName() + " - Interval: [" + leg.getDate() + " - " + leg.getEnd() + "]");
 			index++;
@@ -648,8 +685,7 @@ public class CompleteMission extends SimpleMission {
 	}
 
 	/**
-	 * [COPY-PASTE AND COMPLETE THIS METHOD TO ACHIEVE YOUR PROJECT]
-	 * 
+
 	 * Create an adapted instance of {@link EventDetector} matching the input need
 	 * for monitoring the events defined by the X constraint. (X can be a lot of
 	 * things).
@@ -956,16 +992,8 @@ public class CompleteMission extends SimpleMission {
 	}
 
 	/**
-	 * [COPY-PASTE AND COMPLETE THIS METHOD TO ACHIEVE YOUR PROJECT]
-	 * 
-	 * This method should create a {@link CodedEventsLogger} object which be used to
-	 * log all events computed for a given constraint. This logger can then be used
-	 * to create a {@link Timeline} after propagation by logging all events linked
-	 * with the constraint in the {@link Timeline}
-	 * 
-	 * You can copy-paste this method and adapt it for every X constraint you need
-	 * to implement. The global process described here stays the same.
-	 * 
+	 * Create logger for the visibility constraints.
+	 *
 	 * @param targetSite Input target {@link Site}
 	 * @return The {@link CodedEventsLogger} used to monitor all events linked with
 	 *         the chosen constraint
@@ -1056,6 +1084,13 @@ public class CompleteMission extends SimpleMission {
 		return eventXLogger;
 	}
 
+	/**
+	 * Create logger for the sun incidence angle constraints.
+	 *
+	 * @param targetSite Input target {@link Site}
+	 * @return The {@link CodedEventsLogger} used to monitor all events linked with
+	 *         the chosen constraint
+	 */
 	private CodedEventsLogger createIncidenceConstraintLogger(Site targetSite) {
 
 		final String typeCode = "INCIDENCE";
@@ -1086,6 +1121,14 @@ public class CompleteMission extends SimpleMission {
 		return eventXLogger;
 	}
 
+	/**
+	 * Create logger for the dazzling angle constraints.
+	 * The time windows returned correspond to the sensor being dazzled!!
+	 *
+	 * @param targetSite Input target {@link Site}
+	 * @return The {@link CodedEventsLogger} used to monitor all events linked with
+	 *         the chosen constraint
+	 */
 	private CodedEventsLogger createDazzlingConstraintLogger(Site targetSite) {
 
 		final String typeCode = "DAZZLE"; 
