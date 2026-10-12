@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.function.BinaryOperator;
 
 import org.slf4j.Logger;
 
@@ -35,6 +36,7 @@ import fr.cnes.sirius.patrius.frames.FramesFactory;
 import fr.cnes.sirius.patrius.frames.TopocentricFrame;
 import fr.cnes.sirius.patrius.math.util.MathLib;
 import fr.cnes.sirius.patrius.orbits.pvcoordinates.PVCoordinatesProvider;
+import fr.cnes.sirius.patrius.propagation.AbstractPropagator;
 import fr.cnes.sirius.patrius.propagation.analytical.KeplerianPropagator;
 import fr.cnes.sirius.patrius.propagation.events.ConstantRadiusProvider;
 import fr.cnes.sirius.patrius.propagation.events.EventDetector;
@@ -373,19 +375,6 @@ public class CompleteMission extends SimpleMission {
 		 * able to add it to the StrictAttitudeLegsSequence as every other leg.
 		 */
 		logger.info("============= Computing Cinematic Plan =============");
-		/*
-		 * Example of code using our observation plan, let's say we only have one obs
-		 * pointing Paris.
-		 * 
-		 * Then we are going to create a very basic cinematic plan : nadir law => slew
-		 * => obsParis => slew => nadir law
-		 * 
-		 * To do that, we need to compute the slew duration from the end of nadir law to
-		 * the begining of Paris obs and then from the end of Paris obs to the begining
-		 * of nadir law. For that, we use the Satellite#computeSlewDurationMethod() as
-		 * before. We know we have to the time to perform the slew thanks to the
-		 * cinematic checks we already did during the observation plan computation.
-		 */
 
 		this.cinematicPlan.clear();
 
@@ -422,6 +411,7 @@ public class CompleteMission extends SimpleMission {
 			
 			// Add the slew to get to the current observation window
 			if (entry.getKey() != scheduledObservations.firstKey() && previousObsEntry != null) {
+				
 				// Get the starting slew state 
 				final AbsoluteDate fromDate = previousObsLeg.getEnd();	
 				final Site fromTarget = previousObsEntry.getValue();
@@ -432,10 +422,42 @@ public class CompleteMission extends SimpleMission {
 				final Site toTarget = entry.getValue();	
 				final Attitude toAtt = obsLeg.getAttitude(propagator, toDate, getEme2000());
 
-				// Create and add the slew
-				final String slewCode = "SLEW-" + fromTarget.getName() + "-TO-" + toTarget.getName();
-				final ConstantSpinSlew slew = new ConstantSpinSlew(fromAtt, toAtt, slewCode);
-				this.cinematicPlan.add(slew);
+				// Compute the possibility of transitioning to NADIR
+				boolean directSlew = toDate.durationFrom(fromDate) <= 2.0 * getSatellite().getMaxSlewDuration();
+				
+				// Compute and add a direct slew
+				if (directSlew) {
+					final String slewCode = "SLEW-" + fromTarget.getName() + "-TO-" + toTarget.getName();
+					final ConstantSpinSlew slew = new ConstantSpinSlew(fromAtt, toAtt, slewCode);
+					this.cinematicPlan.add(slew);
+				}
+
+				// Compute and add an Obs --[Slew]--> Nadir --[Slew]--> Obs
+				else {
+					// Get the intermediate Nadir start/end states
+					final AbsoluteDate nadirStart = fromDate.shiftedBy(+getSatellite().getMaxSlewDuration());
+					final AbsoluteDate nadirEnd = toDate.shiftedBy(-getSatellite().getMaxSlewDuration());
+
+					final Attitude nadirStartAtt = nadirLaw.getAttitude(propagator, nadirStart, getEme2000());
+					final Attitude nadirEndtAtt = nadirLaw.getAttitude(propagator, nadirEnd, getEme2000());
+
+					// Add slew from Obs to Nadir
+					final String firstSlewCode = "SLEW-" + fromTarget.getName() + "-TO-NADIR";
+					final ConstantSpinSlew firstSlew = new ConstantSpinSlew(fromAtt, nadirStartAtt, firstSlewCode);
+					this.cinematicPlan.add(firstSlew);
+
+					// Add the nadir leg
+					final String intermediateNadirCode = "NADIR-" + fromTarget.getName() + "-TO-" + toTarget.getName();
+					final AttitudeLawLeg intermediateNadir = new AttitudeLawLeg(nadirLaw, nadirStart, nadirEnd, intermediateNadirCode);
+					this.cinematicPlan.add(intermediateNadir);
+
+					// Add slew from Nadir to Next Obs
+					final String secondSlewCode = "SLEW-NADIR-TO-" + toTarget.getName();
+					final ConstantSpinSlew lastSlew = new ConstantSpinSlew(nadirEndtAtt, toAtt, secondSlewCode);
+					this.cinematicPlan.add(lastSlew);
+
+				}
+
 			}
 
 			// Add the pointing law for the current observation
