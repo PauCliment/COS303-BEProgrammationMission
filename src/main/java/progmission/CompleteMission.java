@@ -389,11 +389,12 @@ public class CompleteMission extends SimpleMission {
 		final Site firstSite = this.scheduledObservations.firstEntry().getValue();
 		final AttitudeLeg firstObs = observationPlan.get(firstSite);
 		final AbsoluteDate obsStart = firstObs.getDate();
+		final Attitude obsStartAtt = firstObs.getAttitude(propagator, obsStart, getEme2000());
 
 		// Get the first slew date and find the initial attitudes
-		final AbsoluteDate slewStart = obsStart.shiftedBy(-getSatellite().getMaxSlewDuration());
+		double slewStartDuration = slewDurationNadirToAtt(nadirLaw, obsStartAtt, propagator);
+		final AbsoluteDate slewStart = obsStart.shiftedBy(-slewStartDuration);
 		final Attitude slewStartAtt = nadirLaw.getAttitude(propagator, slewStart, getEme2000());
-		final Attitude obsStartAtt = firstObs.getAttitude(propagator, obsStart, getEme2000());
 
 		// Compute and add the initial nadir and slew
 		final AttitudeLawLeg startNadir = new AttitudeLawLeg(nadirLaw, planStart, slewStart, "NADIR-Initial");
@@ -422,8 +423,12 @@ public class CompleteMission extends SimpleMission {
 				final Site toTarget = entry.getValue();	
 				final Attitude toAtt = obsLeg.getAttitude(propagator, toDate, getEme2000());
 
+				// Get the durations needed to transition to and from the hypothetical nadir
+				final double nadirStartDuration = slewDurationAttToNadir(fromAtt, nadirLaw, propagator);
+				final double nadirEndDuration = slewDurationNadirToAtt(nadirLaw, toAtt, propagator);
+
 				// Compute the possibility of transitioning to NADIR
-				boolean directSlew = toDate.durationFrom(fromDate) <= 2.0 * getSatellite().getMaxSlewDuration();
+				boolean directSlew = toDate.durationFrom(fromDate) <= (nadirStartDuration + nadirEndDuration);
 				
 				// Compute and add a direct slew
 				if (directSlew) {
@@ -434,9 +439,10 @@ public class CompleteMission extends SimpleMission {
 
 				// Compute and add an Obs --[Slew]--> Nadir --[Slew]--> Obs
 				else {
+
 					// Get the intermediate Nadir start/end states
-					final AbsoluteDate nadirStart = fromDate.shiftedBy(+getSatellite().getMaxSlewDuration());
-					final AbsoluteDate nadirEnd = toDate.shiftedBy(-getSatellite().getMaxSlewDuration());
+					final AbsoluteDate nadirStart = fromDate.shiftedBy(nadirStartDuration);
+					final AbsoluteDate nadirEnd = toDate.shiftedBy(-nadirEndDuration);
 
 					final Attitude nadirStartAtt = nadirLaw.getAttitude(propagator, nadirStart, getEme2000());
 					final Attitude nadirEndtAtt = nadirLaw.getAttitude(propagator, nadirEnd, getEme2000());
@@ -474,10 +480,11 @@ public class CompleteMission extends SimpleMission {
 		final Site lastSite = this.scheduledObservations.lastEntry().getValue();
 		final AttitudeLeg lastObs = observationPlan.get(lastSite);
 		final AbsoluteDate obsEnd = lastObs.getEnd();
+		final Attitude obsEndAtt = lastObs.getAttitude(propagator, obsEnd, getEme2000());
 
 		// Get the last slew date and find the final attitudes
-		final AbsoluteDate slewEnd = obsEnd.shiftedBy(+getSatellite().getMaxSlewDuration());
-		final Attitude obsEndAtt = lastObs.getAttitude(propagator, obsEnd, getEme2000());
+		double slewEndDuration = slewDurationAttToNadir(obsEndAtt, nadirLaw, propagator);
+		final AbsoluteDate slewEnd = obsEnd.shiftedBy(+slewEndDuration);
 		final Attitude slewEndtAtt = nadirLaw.getAttitude(propagator, slewEnd, getEme2000());
 
 		// Compute and add the final nadir and slew
@@ -496,6 +503,140 @@ public class CompleteMission extends SimpleMission {
 		 * you will be able to play to visualize and validate your plans.
 		 */
 		return this.cinematicPlan;
+	}
+
+	/**
+	 * Compute the slew duration from an initial {@link Attitude} to a target 
+	 * {@link AttitudeLaw} representing nadir pointing, using an iterative 
+	 * fixed-point solver approach.
+	 * 
+	 * If the solver fails to converge within the maximum number of iterations or 
+	 * encounters an exception during orbital propagation, a safe fallback value 
+	 * corresponding to the maximum allowable slew duration is returned.
+	 * 
+	 * Note: this method uses a convergence tolerance and includes a small safety buffer 
+	 * on the final returned duration.
+	 * 
+	 * @param startAttitude The initial {@link Attitude} at the start of the slew.
+	 * @param nadirLeg      The {@link AttitudeLaw} defining the target nadir law.
+	 * @param propagator    The {@link KeplerianPropagator} used for state propagation.
+	 * @return The computed slew duration (in seconds) with an added tolerance buffer, 
+	 *         or the maximum slew duration as a safe fallback.
+	 */
+	private double slewDurationAttToNadir (Attitude startAttitude, AttitudeLaw nadirLaw, AbstractPropagator propagator) {
+
+		// Initialize the slew durations
+		double durationGuess = getSatellite().getMaxSlewDuration();
+		double previousDurationGuess = 0.0;
+
+		// Initialize the solver parameters
+		int iterations = 0;
+		int maxIterations = 100;
+		boolean iterationFlag = false;
+		double tolerance = 1.0e-4;
+
+		AbsoluteDate startDate = startAttitude.getDate();
+
+		while (Math.abs(durationGuess - previousDurationGuess) > tolerance) {
+
+			// Update the solver parameters
+			iterations += 1;
+			previousDurationGuess = durationGuess;
+
+			// Update the final attitude;
+			try {
+				Attitude finalAttitude = nadirLaw.getAttitude(propagator, startDate.shiftedBy(durationGuess), getEme2000());
+				durationGuess = getSatellite().computeSlewDuration(startAttitude, finalAttitude);
+			}
+			// If an error is found, the loop is exited
+			catch (PatriusException error) {
+				logger.info("Error computing the slew time");
+				iterationFlag = true;
+				break;
+			}
+
+			// Exit condition if iteration count becomes too high
+			if (iterations > maxIterations) {
+				iterationFlag = true;
+				break;
+			}
+		}
+
+		if (iterationFlag == false) {
+			// Return the found duration + tolerance to make sure it is feasible
+			return durationGuess + tolerance;
+		}
+		else {
+			// Safe fall-back
+			return getSatellite().getMaxSlewDuration();
+		}
+	}
+
+	/**
+	 * Compute the slew duration from an initial {@link AttitudeLaw} representing 
+	 * nadir pointing to a target {@link Attitude}, using an iterative fixed-point 
+	 * solver approach.
+	 * 
+	 * This serves as the reverse counterpart to {@link #slewDurationAttToNadir(Attitude, AttitudeLawLeg, KeplerianPropagator)}, 
+	 * stepping backward in time from the target arrival date to determine the required start state.
+	 * 
+	 * If the solver fails to converge within the maximum number of iterations or 
+	 * encounters an exception during orbital propagation, a safe fallback value 
+	 * corresponding to the maximum allowable slew duration is returned.
+	 * 
+	 * @param nadirLeg     The {@link AttitudeLaw} defining the initial nadir law.
+	 * @param endAttitude  The final {@link Attitude} at the arrival of the slew.
+	 * @param propagator   The {@link AbstractPropagator} used for state propagation.
+	 * @return The computed slew duration (in seconds) with an added tolerance buffer, 
+	 *         or the maximum slew duration as a safe fallback.
+	 */
+	private double slewDurationNadirToAtt (AttitudeLaw nadirLaw, Attitude endAttitude, AbstractPropagator propagator) {
+
+		// Initialize the slew durations
+		double durationGuess = getSatellite().getMaxSlewDuration();
+		double previousDurationGuess = 0.0;
+
+		// Initialize the solver parameters
+		int iterations = 0;
+		int maxIterations = 100;
+		boolean iterationFlag = false;
+		double tolerance = 1.0e-4;
+
+		AbsoluteDate endDate = endAttitude.getDate();
+
+		while (Math.abs(durationGuess - previousDurationGuess) > tolerance) {
+
+			// Update the solver parameters
+			iterations += 1;
+			previousDurationGuess = durationGuess;
+
+			// Update the final attitude;
+			try {
+				Attitude startAttitude = nadirLaw.getAttitude(propagator, endDate.shiftedBy(-durationGuess), getEme2000());
+				durationGuess = getSatellite().computeSlewDuration(startAttitude, endAttitude);
+			}
+			// If an error is found, the loop is exited
+			catch (PatriusException error) {
+				logger.info("Error computing the slew time");
+				iterationFlag = true;
+				break;
+			}
+
+			// Exit condition if iteration count becomes too high
+			if (iterations > maxIterations) {
+				iterationFlag = true;
+				break;
+			}
+		}
+
+		if (iterationFlag == false) {
+			// Return the found duration + tolerance to make sure it is feasible
+			return durationGuess + tolerance;
+		}
+		else {
+			// Safe fall-back
+			return getSatellite().getMaxSlewDuration();
+		}
 	}
 
 
