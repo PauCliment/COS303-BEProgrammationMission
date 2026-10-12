@@ -392,7 +392,7 @@ public class CompleteMission extends SimpleMission {
 		final Attitude obsStartAtt = firstObs.getAttitude(propagator, obsStart, getEme2000());
 
 		// Get the first slew date and find the initial attitudes
-		double slewStartDuration = slewDurationNadirToAtt(nadirLaw, obsStartAtt, propagator);
+		final double slewStartDuration = slewDurationNadirToAtt(nadirLaw, obsStartAtt, propagator);
 		final AbsoluteDate slewStart = obsStart.shiftedBy(-slewStartDuration);
 		final Attitude slewStartAtt = nadirLaw.getAttitude(propagator, slewStart, getEme2000());
 
@@ -428,7 +428,7 @@ public class CompleteMission extends SimpleMission {
 				final double nadirEndDuration = slewDurationNadirToAtt(nadirLaw, toAtt, propagator);
 
 				// Compute the possibility of transitioning to NADIR
-				boolean directSlew = toDate.durationFrom(fromDate) <= (nadirStartDuration + nadirEndDuration);
+				final boolean directSlew = toDate.durationFrom(fromDate) <= (nadirStartDuration + nadirEndDuration);
 				
 				// Compute and add a direct slew
 				if (directSlew) {
@@ -483,7 +483,7 @@ public class CompleteMission extends SimpleMission {
 		final Attitude obsEndAtt = lastObs.getAttitude(propagator, obsEnd, getEme2000());
 
 		// Get the last slew date and find the final attitudes
-		double slewEndDuration = slewDurationAttToNadir(obsEndAtt, nadirLaw, propagator);
+		final double slewEndDuration = slewDurationAttToNadir(obsEndAtt, nadirLaw, propagator);
 		final AbsoluteDate slewEnd = obsEnd.shiftedBy(+slewEndDuration);
 		final Attitude slewEndtAtt = nadirLaw.getAttitude(propagator, slewEnd, getEme2000());
 
@@ -531,11 +531,11 @@ public class CompleteMission extends SimpleMission {
 
 		// Initialize the solver parameters
 		int iterations = 0;
-		int maxIterations = 100;
 		boolean iterationFlag = false;
-		double tolerance = 1.0e-4;
+		final int maxIterations = 100;
+		final double tolerance = 1.0e-4;
 
-		AbsoluteDate startDate = startAttitude.getDate();
+		final AbsoluteDate startDate = startAttitude.getDate();
 
 		while (Math.abs(durationGuess - previousDurationGuess) > tolerance) {
 
@@ -597,12 +597,13 @@ public class CompleteMission extends SimpleMission {
 		double previousDurationGuess = 0.0;
 
 		// Initialize the solver parameters
+		// Initialize the solver parameters
 		int iterations = 0;
-		int maxIterations = 100;
 		boolean iterationFlag = false;
-		double tolerance = 1.0e-4;
+		final int maxIterations = 100;
+		final double tolerance = 1.0e-4;
 
-		AbsoluteDate endDate = endAttitude.getDate();
+		final AbsoluteDate endDate = endAttitude.getDate();
 
 		while (Math.abs(durationGuess - previousDurationGuess) > tolerance) {
 
