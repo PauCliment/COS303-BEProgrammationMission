@@ -748,10 +748,11 @@ public class CompleteMission extends SimpleMission {
 		this.scheduledObservations.clear();
 		double totalValue = 0.0; // Score of the final observation plan
 
-		// Constant worst-case slew duration (plus a tiny safety margin) required
-		// between two consecutive observations, and between an observation and the
-		// nadir law at the beginning / end of the mission
-		final double minGap = this.getSatellite().getMaxSlewDuration() + 0.1;
+		// Safety margin (s) added to every theoretical slew duration
+		final double margin = 0.1;
+
+		// Default (nadir) attitude law, used for the slews at the start / end of the mission
+		final AttitudeLaw nadirLaw = this.getSatellite().getDefaultAttitudeLaw();
 		final double obsDuration = ConstantsBE.INTEGRATION_TIME;
 
 		// Sampling step (s) of the possible observation start dates in a window
@@ -768,6 +769,9 @@ public class CompleteMission extends SimpleMission {
 		for (final Site target : sites) {
 
 			final TopocentricFrame siteFrame = new TopocentricFrame(this.getEarth(), target.getPoint(), target.getName());
+
+			// Observation law of the target, built once and reused for the cinematic checks and for the final AttitudeLawLeg
+			final AttitudeLaw observationLaw = createObservationLaw(target);
 
 			// Best feasible observation found so far for this site
 			AbsoluteDate bestStart = null;
@@ -790,25 +794,40 @@ public class CompleteMission extends SimpleMission {
 					final AbsoluteDate end = start.shiftedBy(obsDuration);
 					final AbsoluteDate middle = start.shiftedBy(obsDuration / 2);
 
-					// Cinematic check with the nadir law at the mission start / end
-					// Ensures the satellite can slew from nadir to observation and vice-versa
-					boolean free = start.durationFrom(this.getStartDate()) >= minGap
-							&& this.getEndDate().durationFrom(end) >= minGap;
+					// Attitudes of the candidate observation at its start and at its end
+					final Attitude candidateStartAtt = observationLaw.getAttitude(propagator, start, this.getEme2000());
+					final Attitude candidateEndAtt = observationLaw.getAttitude(propagator, end, this.getEme2000());
+
+					boolean free;
 
 					// Cinematic check with the previous scheduled observation
+					// (or with the nadir law if the candidate would be the first observation)
 					final Entry<AbsoluteDate, Site> previous = scheduledObservations.floorEntry(start);
-					if (previous != null && start.durationFrom(this.observationPlan.get(previous.getValue()).getEnd()) < minGap) {
-						free = false;
+					if (previous != null) {
+					    final AttitudeLawLeg previousLeg = this.observationPlan.get(previous.getValue());
+					    final Attitude previousEndAtt = previousLeg.getAttitude(propagator, previousLeg.getEnd(), this.getEme2000());
+					    final double slewDuration = this.getSatellite().computeSlewDuration(previousEndAtt, candidateStartAtt);
+					    free = start.durationFrom(previousLeg.getEnd()) >= slewDuration + margin;
+					} else {
+					    free = start.durationFrom(this.getStartDate()) >= slewDurationNadirToAtt(nadirLaw, candidateStartAtt, propagator);
 					}
 
 					// Cinematic check with the next scheduled observation
-					final Entry<AbsoluteDate, Site> next = scheduledObservations.ceilingEntry(start);
-					if (next != null && next.getKey().durationFrom(end) < minGap) {
-						free = false;
+					// (or with the nadir law if the candidate would be the last observation)
+					if (free) {
+					    final Entry<AbsoluteDate, Site> next = scheduledObservations.ceilingEntry(start);
+					    if (next != null) {
+					        final AttitudeLawLeg nextLeg = this.observationPlan.get(next.getValue());
+					        final Attitude nextStartAtt = nextLeg.getAttitude(propagator, next.getKey(), this.getEme2000());
+					        final double slewDuration = this.getSatellite().computeSlewDuration(candidateEndAtt, nextStartAtt);
+        					free = next.getKey().durationFrom(end) >= slewDuration + margin;
+    					} else {
+					        free = this.getEndDate().durationFrom(end) >= slewDurationAttToNadir(candidateEndAtt, nadirLaw, propagator);
+					    }
 					}
 
 					if (!free) {
-						continue;
+					    continue;
 					}
 
 					// Value = site score * cos(incidence angle) at the middle of the observation.
@@ -828,7 +847,6 @@ public class CompleteMission extends SimpleMission {
 			if (bestStart != null) {
 				final AbsoluteDate bestEnd = bestStart.shiftedBy(obsDuration);
 				final AbsoluteDateInterval bestInterval = new AbsoluteDateInterval(bestStart, bestEnd);
-				final AttitudeLaw observationLaw = createObservationLaw(target);
 				final AttitudeLawLeg obsLeg = new AttitudeLawLeg(observationLaw, bestInterval, "OBS_" + target.getName());
 				this.observationPlan.put(target, obsLeg);
 				scheduledObservations.put(bestStart, target);
