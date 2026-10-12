@@ -1043,7 +1043,7 @@ public class CompleteMission extends SimpleMission {
 
 		// Satellite axis pointing the target (sensor boresight) and normal axis.
 		// They must be consistent with the sensor definition in the Satellite class.
-		final Vector3D lineOfSight = Vector3D.PLUS_K;
+		final Vector3D lineOfSight = Vector3D.MINUS_K;
 		final Vector3D normalAxis = Vector3D.PLUS_I;
 
 		return new TargetGroundPointing(this.getEarth(), targetPosition, lineOfSight, normalAxis);
