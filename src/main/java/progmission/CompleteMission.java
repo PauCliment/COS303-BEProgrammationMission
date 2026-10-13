@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.List;
 import java.util.TreeMap;
-import java.util.function.BinaryOperator;
 
 import org.slf4j.Logger;
 
@@ -193,17 +192,15 @@ public class CompleteMission extends SimpleMission {
 	}
 
 	/**
-	 * [COMPLETE THIS METHOD TO ACHIEVE YOUR PROJECT]
-	 * 
 	 * Compute the access plan.
 	 * 
-	 * Reminder : the access plan corresponds to the object gathering all the
+	 * The access plan corresponds to the object gathering all the
 	 * opportunities of access for all the sites of interest during the mission
 	 * horizon. One opportunity of access is defined by an access window (an
 	 * interval of time during which the satellite can observe the target and during
 	 * which all the observation conditions are achieved : visibility, incidence
-	 * angle, illumination of the scene,etc.). Here, we suggest you use the Patrius
-	 * class {@link Timeline} to encapsulate all the access windows of each site of
+	 * angle, illumination of the scene,etc.). Here, we use the Patrius class 
+	 * {@link Timeline} to encapsulate all the access windows of each site of
 	 * interest. One access window will then be described by the {@link Phenomenon}
 	 * object, itself defined by two {@link CodedEvent} objects giving the start and
 	 * end of the access window. Please find more tips and help in the submethods of
@@ -214,14 +211,7 @@ public class CompleteMission extends SimpleMission {
 	 *                          computations
 	 */
 	public Map<Site, Timeline> computeAccessPlan() throws PatriusException {
-		/**
-		 * Here you need to compute one access Timeline per target Site. You can start
-		 * with only one site and then try to compute all of them.
-		 * 
-		 * Note : when computing all the sites, try to make sure you don't decrease the
-		 * performance of the code too much. You might have some modifications to do in
-		 * order to ensure a reasonable time of execution.
-		 */
+
 		logger.info("============= Computing Access Plan =============");
 
 		/**
@@ -234,14 +224,6 @@ public class CompleteMission extends SimpleMission {
 
 		for (final Site targetSite : this.getSiteList()) {
 			logger.info(" Site : " + targetSite.getName());
-
-			/*
-			 * You can check if the Site access has already been computed and serialized or
-			 * not. If so, you can simply load the .ser file to load the timeline, else you
-			 * need to compute it. This will prevent you from computing the whole access
-			 * timelines each time you want to compute an observation plan and save time
-			 * later in the BE.
-			 */
 
 			// Checking if the Site access Timeline has already been serialized or not
 			final String filename = generateSerializationName(targetSite, HASH_CONSTANT_BE);
@@ -328,13 +310,11 @@ public class CompleteMission extends SimpleMission {
 	}
 
 	/**
-	 * [COMPLETE THIS METHOD TO ACHIEVE YOUR PROJECT]
-	 * 
 	 * Computes the cinematic plan.
 	 * 
-	 * Here you need to compute the cinematic plan, which is the cinematic chain of
+	 * Here we compute the cinematic plan, which is the cinematic chain of
 	 * attitude law legs (observation, default law and slews) needed to perform the
-	 * mission. Usually, we start and end the mission in default law and during the
+	 * mission. We start and end the mission in default law and during the
 	 * horizon, we alternate between default law, observation legs and slew legs.
 	 * 
 	 * @return a {@link StrictAttitudeLegsSequence} that gives all the cinematic
@@ -348,32 +328,6 @@ public class CompleteMission extends SimpleMission {
 	 */
 	public StrictAttitudeLegsSequence<AttitudeLeg> computeCinematicPlan() throws PatriusException {
 
-		/**
-		 * Now we want to assemble a continuous attitude law which is valid during all
-		 * the mission horizon. For that, we will use to object
-		 * StrictAttitudeLegsSequence<AttitudeLeg> which is a chronological sequence of
-		 * AttitudeLeg. In our case, each AttitudeLeg will be an AttitudeLawLeg, either
-		 * a leg of site observation, a slew, or the nadir pointing attitude law (see
-		 * the Satellite constructor and the BodyCenterGroundPointing class, it's the
-		 * Satellite default attitude law). For more help about the Attitude handling,
-		 * use the module 11 of the patrius formation.
-		 * 
-		 * Tip 1 : Please give names to the different AttitudeLawLeg you build so that
-		 * you can visualize them with VTS later on. For example "OBS_Paris" when
-		 * observing Paris or "SlEW_Paris_Lyon" when adding a slew from Paris
-		 * observation AttitudeLawLeg to Lyon observation AttitudeLawLeg.
-		 * 
-		 * Tip 2 : the sequence you want to obtain should look like this :
-		 * [nadir-slew-obs1-slew-obs2-slew-obs3-slew-nadir] for the simple version where
-		 * you don't try to fit nadir laws between observations or
-		 * [nadir-slew-obs1-slew-nadir-selw-obs2-slew-obs3-slew-nadir] for the more
-		 * complexe version with nadir laws if the slew during two observation is long
-		 * enough.
-		 * 
-		 * Tip 3 : You can use the class ConstantSpinSlew(initialAttitude,
-		 * finalAttitude, slewName) for the slews. This an AtittudeLeg so you will be
-		 * able to add it to the StrictAttitudeLegsSequence as every other leg.
-		 */
 		logger.info("============= Computing Cinematic Plan =============");
 
 		this.cinematicPlan.clear();
@@ -493,15 +447,6 @@ public class CompleteMission extends SimpleMission {
 		this.cinematicPlan.add(endSlew);
 		this.cinematicPlan.add(endNadir);
 
-		/**
-		 * Now your job is finished, the two following methods will finish the job for
-		 * you : checkCinematicPlan() will check that each slew's duration is longer
-		 * than the theoritical duration it takes to perform the same slew. Then, if the
-		 * cinematic plan is valid, computeFinalScore() will compute the score of your
-		 * observation plan. Finaly, generateVTSVisualization will write all the
-		 * ephemeris (Position/Velocity + Attitude) and generate a VTS simulation that
-		 * you will be able to play to visualize and validate your plans.
-		 */
 		return this.cinematicPlan;
 	}
 
@@ -642,8 +587,6 @@ public class CompleteMission extends SimpleMission {
 
 
 	/**
-	 * [COMPLETE THIS METHOD TO ACHIEVE YOUR PROJECT]
-	 * 
 	 * Compute the observation plan.
 	 * 
 	 * Reminder : the observation plan corresponds to the sequence of observations
@@ -655,91 +598,8 @@ public class CompleteMission extends SimpleMission {
 	 * @return the sites observation plan with one {@link AttitudeLawLeg} per
 	 *         {@link Site}
 	 * @throws PatriusException If a {@link PatriusException} occurs during the
-	 *                          computations
-	 */
-			/**
-		 * Here are the big constraints and informations you need to build an
-		 * observation plan.
-		 * 
-		 * Reminder : we can perform only one observation per site of interest during
-		 * the mission horizon.
-		 * 
-		 * Objective : Now we have our access plan, listing for each Site all the access
-		 * windows. There might be up to one access window per orbit pass above each
-		 * site, so we have to decide for each Site which access window will be used to
-		 * achieve the observation of the Site. Then, during one access window, we have
-		 * to decide when precisely we perform the observation, which lasts a constant
-		 * duration which is much smaller than the access window itself (see
-		 * ConstantsBE.INTEGRATION_TIME for the duration of one observation). Finally,
-		 * we must respect the cinematic constraint : using the
-		 * Satellite#computeSlewDuration() method, we need to ensure that the
-		 * theoritical duration of the slew between two consecutive observations is
-		 * always smaller than the actual duration between those consecutive
-		 * observations. Same goes for the slew between a Nadir pointing law and another
-		 * poiting law. Of course, we cannot point two targets at once, so we cannot
-		 * perform two observations during the same AbsoluteDateInterval !
-		 * 
-		 * Tip 1 : Here you can use the greedy algorithm presented in class, or any
-		 * method you want. You just have to ensure that all constraints are respected.
-		 * This is a non linear, complex optimization problem (scheduling problem), so
-		 * there is no universal answer. Even if you don't manage to build an optimal
-		 * plan, try to code a suboptimal algorithm anyway, we will value any idea you
-		 * have. For example, try with a plan where you have only one observation per
-		 * satellite pass over France. With that kind of plan, you make sure all
-		 * cinematic constraint are respected (no slew to fast for the satellite
-		 * agility) and you have a basic plan to use to build your cinematic plan and
-		 * validate with VTS visualization.
-		 * 
-		 * Tip 2 : We provide the observation plan format : a Map of AttitudeLawLeg. In
-		 * doing so, we give you the structure that you must obtain in order to go
-		 * further. If you check the Javadoc of the AttitudeLawLeg class, you see that
-		 * you have two inputs. First, you must provide a specific interval of time that
-		 * you have to chose inside one of the access windows of your access plan. Then,
-		 * we give you which law to use for observation legs : TargetGroundPointing.
-		 * 
-		 */
-
-							/**
-				 * Now that you have your observation law, you can compute at any AbsoluteDate
-				 * the Attitude of your Satellite pointing the target (using the getAttitude()
-				 * method). You can use those Attitudes to compute the duration of a slew from
-				 * one Attitude to another, for example the duration of the slew from the
-				 * Attitude at the end of an observation to the Atittude at the start of the
-				 * next one. That's how you will be able to choose a valid AbsoluteDateInterval
-				 * during which the observation will actually be performed, lasting
-				 * ConstantsBE.INTEGRATION_TIME seconds. When you have your observation
-				 * interval, you can build an AttitudeLawLeg using the observationLaw and this
-				 * interval and finally add this leg to the observation plan.
-				 */
-				/*
-
-								/**
-				 * Of course, here the actual duration is less than the maximum possible
-				 * duration because the TargetGroundPointing mode is a very slow one and the
-				 * Satellite is very agile. But sometimes when trying to perform a slew from one
-				 * target to another, you will find that the Satellite doesn't have enough time,
-				 * then you need to either translate one of the observations or just don't
-				 * perform one of the observation.
-				 */
-
-				/**
-				 * Let's say after comparing several observation slews, you find a valid couple
-				 * of dates defining your observation window : {obsStart;obsEnd}, with
-				 * obsEnd.durationFrom(obsStart) == ConstantsBE.INTEGRATION_TIME.
-				 * 
-				 * Then you can use those dates to create your AtittudeLawLeg that you will
-				 * insert inside the observaiton pla, for this target. Reminder : only one
-				 * observation in the observation plan per target !
-				 * 
-				 * WARNING : what we do here doesn't work, we didn't check that there wasn't
-				 * another target observed while inserting this target observation, it's up to
-				 * you to build your observation plan using the methods and tips we provide. You
-				 * can also only insert one observation for each pass of the satellite and it's
-				 * fine.
-				 */
-				// Here we use the middle of the accessInterval to define our dates of
-				// observation
-
+	 * computations
+	*/
 	public Map<Site, AttitudeLawLeg> computeObservationPlan() throws PatriusException {
 
 		logger.info("============= Computing Observation Plan =============");
@@ -867,68 +727,14 @@ public class CompleteMission extends SimpleMission {
 	}
 
 	/**
-
-	 * Create an adapted instance of {@link EventDetector} matching the input need
-	 * for monitoring the events defined by the X constraint. (X can be a lot of
-	 * things).
+	 * Adapted instance of {@link EventDetector} matching the input need for
+	 * monitoring the events defined by the Visibility constraint.
 	 * 
-	 * You can copy-paste this method to adapt it to the {@link EventDetector} X
-	 * that you want to create.
-	 * 
-	 * Note: this can have different inputs that we don't define here
-	 * 
-	 * @return An {@link EventDetector} answering the constraint (for example a
-	 *         {@link SensorVisibilityDetector} for a visibility constraint).
+	 * @param targetSite The {@link Site} defining the city to observe.
+	 * @return An {@link EventDetector} that detects the constraint (in this
+	 * case, a {@link SensorVisibilityDetector}).
 	 */
 	private EventDetector createVisibilityConstraintDetector(Site targetSite) {
-		/**
-		 * Here you build an EventDetector object that corresponds to the constraint X:
-		 * visibility of the target from the satellite, target is in day time, whatever.
-		 * 
-		 * Visibility: For the visibility detector, you can use a SensorModel. You will
-		 * have to add the Earth as a masking body with the method
-		 * addMaskingCelestialBody and to set the main target of the SensorModel with
-		 * the method setMainTarget. Then, you can use the class
-		 * SensorVisibilityDetector with your SensorModel.
-		 * 
-		 * Sun incidence: For the sun incidence angle detector (illumination condition),
-		 * you can use the class ThreeBodiesAngleDetector, the three bodies being the
-		 * ground target, the Earth and the Sun. See the inputs of this class to build
-		 * the object properly.
-		 * 
-		 * Dazzling: Your satellite needs to be protected from dazzling. As a good
-		 * approximation, dazzling is avoided if the angle satellite - target - the Sun
-		 * is below the maximum phase angle (90 degrees, see {@link ConstantsBE}). The
-		 * class ThreeBodiesAngleDetector is suitable for this condition as well.
-		 * 
-		 * Tip 1 : When you create the detectors listed above, you can use the two
-		 * public final static fields MAXCHECK_EVENTS and TRESHOLD_EVENTS to configure
-		 * the detector (those values are often asked in input of the EventDectector
-		 * classes). You will also indicate the Action to perform when the detection
-		 * occurs, which is Action.CONTINUE.
-		 * 
-		 * Tip 2 : The Satellite uses the Assembly class to represent its model. To
-		 * access this Assembly, you have a getter in the Satellite class. Then, to
-		 * access any part of an Assembly, you can call Assembly#getPart(String
-		 * partName). The parts name for our Satellite are declared in the Satellite
-		 * class.
-		 * 
-		 * Tip 3 : when you need an object which is an interface (let's say for example
-		 * a PVCoordinatesProvider) you have to find a class implementing this interface
-		 * and which models what you want to do (here which models the target's
-		 * position/coordinates). To find all the classes implementing an interface :
-		 * "Right Clic", then "Open Type Hierarchy". For example for a
-		 * PVCoordinatesProvider, you have a lot of classes : AbstractCelestialBody if
-		 * your target is a planet for example, or any Propagator if you are propagating
-		 * the PV of a Target like a satellite, or TopocentricFrame if the target is a
-		 * location at the surface of a celestial body, etc.
-		 * 
-		 * Tip 4 : be careful, Patrius methods always use angles in rad and not in deg.
-		 * All BE constants are defined in deg for easier understading of the values. To
-		 * convert degrees into rad, you can use the following method :
-		 * MathLib.toRadians(double x)
-		 * 
-		 */
 
 		
 		// Find the local frame and apparent radius providers for the different sites
@@ -947,6 +753,14 @@ public class CompleteMission extends SimpleMission {
 		return detector;
 	}
 
+	/**
+	 * Adapted instance of {@link EventDetector} matching the input need for
+	 * monitoring the events defined by the Sun Incidence angle constraint.
+	 * 
+	 * @param targetSite The {@link Site} defining the city to observe.
+	 * @return An {@link EventDetector} that detects the constraint (in this
+	 * case, a {@link ThreeBodiesAngleDetector}).
+	 */
 	private EventDetector createIncidenceConstraintDetector(Site targetSite) {
 
 		 // Local frame of the observation site
@@ -977,6 +791,7 @@ public class CompleteMission extends SimpleMission {
 				180.0 - ConstantsBE.MAX_SUN_INCIDENCE_ANGLE
 		);
 
+		// Initialize the three bodies sun incidence angle detector
 		final EventDetector detector = new ThreeBodiesAngleDetector(
 				this.getSun(),
 				sitePvProv,
@@ -990,21 +805,31 @@ public class CompleteMission extends SimpleMission {
 		return detector;
 	}
 
+	/**
+	 * Adapted instance of {@link EventDetector} matching the input need for
+	 * monitoring the events defined by the Sun Incidence angle constraint.
+	 * 
+	 * @param targetSite The {@link Site} defining the city to observe.
+	 * @return An {@link EventDetector} that detects the constraint (in this
+	 * case, a {@link ThreeBodiesAngleDetector}).
+	 */
 	private EventDetector createDazzlingConstraintDetector(Site targetSite) {
 
-		final TopocentricFrame target =
-			new TopocentricFrame(
-				this.getEarth(),
-				targetSite.getPoint(),
-				targetSite.getName()
-			);
+		// Initialize the target site frame provider
+		final TopocentricFrame target = new TopocentricFrame(
+			this.getEarth(),
+			targetSite.getPoint(),
+			targetSite.getName()
+		);
 
+		// Handle the possible Patrius exception
 		try {
+
+			// Initialize the sun object and the maximum allowed angle
 			final PVCoordinatesProvider sun = CelestialBodyFactory.getSun();
+			final double maxPhaseAngle = MathLib.toRadians(ConstantsBE.MAX_SUN_PHASE_ANGLE);
 
-			final double maxPhaseAngle =
-				MathLib.toRadians(ConstantsBE.MAX_SUN_PHASE_ANGLE);
-
+			// Initialize and return the phase angle detector
 			return new ThreeBodiesAngleDetector(
 				target,
 				sun,
@@ -1022,9 +847,7 @@ public class CompleteMission extends SimpleMission {
 	
 
 	/**
-	 * [COMPLETE THIS METHOD TO ACHIEVE YOUR PROJECT]
-	 * 
-	 * Create an observation leg, that is to say an {@link AttitudeLaw} that give
+	 * Creates an observation leg, that is to say an {@link AttitudeLaw} that give
 	 * the {@link Attitude} (pointing direction) of the {@link Satellite} in order
 	 * to perform the observation of the input target {@link Site}.
 	 * 
@@ -1033,27 +856,18 @@ public class CompleteMission extends SimpleMission {
 	 * {@link Attitude} of the {@link Satellite} at any given {@link AbsoluteDate}
 	 * (instant) during the mission horizon.
 	 * 
+	 * To perform an observation, the satellite needs to point the target for a
+	 * fixed duration.
+	 * 
+	 * Here, we use the {@link TargetGroundPointing}. This law provides a the
+	 * Attitude of a Satellite that only points one target at the surface of a
+	 * BodyShape.
+	 * 
 	 * An {@link AttitudeLaw} is valid at anu time in theory.
 	 * 
 	 * @param target Input target {@link Site}
 	 * @return An {@link AttitudeLawLeg} adapted to the observation.
 	 */
-
-			/**
-		 * To perform an observation, the satellite needs to point the target for a
-		 * fixed duration.
-		 * 
-		 * Here, you will use the {@link TargetGroundPointing}. This law provides a the
-		 * Attitude of a Satellite that only points one target at the surface of a
-		 * BodyShape. The earth object from the SimpleMission is a BodyShape and we
-		 * remind you that the Site object has an attribute which is a GeodeticPoint.
-		 * Use those informations to your advantage to build a TargetGroundPointing.
-		 * 
-		 * Note : to avoid unusual behavior of the TargetGroundPointing law, we advise
-		 * you use the following constructor : TargetGroundPointing(BodyShape, Vector3D,
-		 * Vector3D, Vector3D) specifying the line of sight axis and the normal axis.
-		 */
-
 	private AttitudeLaw createObservationLaw(Site target) throws PatriusException {
 
 		// Target position expressed in the Earth-fixed frame
@@ -1068,15 +882,10 @@ public class CompleteMission extends SimpleMission {
 	}
 
 	/**
-	 * [COMPLETE THIS METHOD TO ACHIEVE YOUR PROJECT]
-	 * 
-	 * This method should compute the input {@link Site}'s access {@link Timeline}.
+	 * This method computes the input {@link Site}'s access {@link Timeline}.
 	 * That is to say the {@link Timeline} which contains all the {@link Phenomenon}
 	 * respecting the access conditions for this site : good visibility + corrrect
 	 * illumination of the {@link Site}.
-	 * 
-	 * For that, we suggest you create as many {@link Timeline} as you need and
-	 * combine them with logical gates to filter only the access windows phenomenon.
 	 * 
 	 * @param targetSite Input target {@link Site}
 	 * @return The {@link Timeline} of all the access {@link Phenomenon} for the
@@ -1088,46 +897,16 @@ public class CompleteMission extends SimpleMission {
 
 		final AbsoluteDateInterval timelineInterval =  new AbsoluteDateInterval(this.getStartDate(), this.getEndDate());
 		
-		/**
-		 * Step 1 :
-		 * 
-		 * Create one Timeline per constraint you want to monitor.
-		 */
+		// Creation of one timeline for every monitored event
 		final Timeline visibilityTimeline = new Timeline(visibilityLogger, timelineInterval, null);
 		final Timeline sunIncidenceTimeline = new Timeline(sunIncidenceDetector, timelineInterval, null);
 		final Timeline dazzlingTimeline = new Timeline(dazzlingDetector, timelineInterval, null);
 
 		
-		/**
-		 * Step 2 :
-		 * 
-		 * Combine the 3 timelines with logical gates and retrieve only the access
-		 * conditions through a refined Timeline object.
-		 * 
-		 * For that, you can use the classes in the events.postprocessing module : for
-		 * example, the AndCriterion or the NotCriterion.
-		 * 
-		 * Finally, you can filter only the Phenomenon matching a certain condition
-		 * using the ElementTypeFilter
-		 */
-
 		// Creating a global Timeline containing all phenomena, this Timeline will be
 		// filtered and processed to that only the access Phenomennon remain, this is
-		// our siteAccessTimeline
+		// our siteAccessTimeline.
 		final Timeline siteAccessTimeline = new Timeline(timelineInterval);
-
-		// Adding the phenomena of all the considered timelines
-		/** Manera de fer stock
-		for (final Phenomenon phenom : visibilityTimeline.getPhenomenaList()) {
-			siteAccessTimeline.addPhenomenon(phenom);
-		}
-		for (final Phenomenon phenom : sunIncidenceTimeline.getPhenomenaList()) {
-			siteAccessTimeline.addPhenomenon(phenom);
-		}
-		for (final Phenomenon phenom : dazzlingTimeline.getPhenomenaList()) {
-			siteAccessTimeline.addPhenomenon(phenom);
-		}
-		*/
 
 		// Adding the phenomena of all the considered timelines
 		siteAccessTimeline.merge(visibilityTimeline); // Merge the visibility timeline into the global Timeline
@@ -1174,81 +953,24 @@ public class CompleteMission extends SimpleMission {
 	}
 
 	/**
-	 * Create logger for the visibility constraints.
+	 * Creates logger for the visibility constraints.
 	 *
 	 * @param targetSite Input target {@link Site}
 	 * @return The {@link CodedEventsLogger} used to monitor all events linked with
 	 *         the chosen constraint
 	 */
 	private CodedEventsLogger createVisibilityConstraintLogger(Site targetSite) {
-		/**
-		 * More context : here is a quick idea of how to create your logger to monitor a
-		 * given constraint in order to the associated Timeline. A Timeline contains a
-		 * PhenomenaList, which is list of Phenomenon objects. Each Phenomenon object
-		 * represents a phenomenon in orbit which is defined between two AbsoluteDate
-		 * objects and their associated CodedEvent which define the begin and the end of
-		 * the Phenomenon. For example, the Sun visibility can be defined as a
-		 * phenomenon beginning with the start of visibility and ending with the end of
-		 * visibility, itself defined using geometrical rules.
-		 */
 
+		// Define event type's code
 		final String typeCode = "VISIBILITY"; 
 
-		/**
-		 * Step 1 :
-		 * 
-		 * Here we deal with event detection. As explain in the module 05, this is done
-		 * with EventDetector objects. If you look at the Javadoc, you'll find all sorts
-		 * of detectors. You need to translate the X input constraint (for example an
-		 * incidence angle between the sensor and the target, sun incidence angle,
-		 * masking of the target by the Earth, etc.) into an EventDetector object.
-		 * Scroll through the event detection modules to find the one adapted to your
-		 * problem (represented by the X constraint which describe the X phenomenon you
-		 * want to detect) and then look at the inputs you need to build it.
-		 * 
-		 * Please note that in order to facilitate the task for you, we provide the
-		 * object Satellite. If you look how the constructor build this object, you will
-		 * find that our Satellite already has an Assembly filled with a lot of
-		 * properties. Among those properties, there is a SensorProperty that you can
-		 * use to your advantage when trying to build you detector (for example when
-		 * trying to build a visibility detector). See the module 7 of the formation to
-		 * learn more about the Assembly object. You can use the SensorProperty via the
-		 * Assembly of the Satellite and its name to define appropriate detectors.
-		 * 
-		 */
-		
+		// Initialise the appropriate constraint detector
 		final EventDetector constraintXDetector = createVisibilityConstraintDetector(targetSite);
 
-		/**
-		 * Step 2 :
-		 * 
-		 * When you have your detector, you can add it on an Orbit Propagator such as
-		 * the KeplerianPropagator of your Satellite. If you give the detector the right
-		 * parameters, you can then propagate the orbit (see the SimpleMission code and
-		 * the module 03 from the Patrius formation) and the detector will automatically
-		 * perform actions when a particular orbital event happens (you need to
-		 * configure the right detector to detect the event you want to monitor).
-		 * 
-		 * You can add several detectors to the propagator (one per constraint per Site
-		 * for example).
-		 */
-		
+		// Add the detector to the propagator (We're adding one for each site)		
 		this.getSatellite().getPropagator().addEventDetector(constraintXDetector);
 
-		/**
-		 * Step 3 :
-		 * 
-		 * Now you need to use the detector to create CodedEvent objects to actually
-		 * detect the events and visualize them. You can obtain CodedEvents with a
-		 * CodedEventsLogger that you plug on an EventDetector with the
-		 * CodedEventsLogger.monitorDetector() method. For that, you will need the
-		 * GenericCodingEventDetector class. See the module 09 to understand how to use
-		 * those objects in order to detect events.
-		 */
-		/*
-		 * Modify the code below to create your GenericCodingEventDetector and use it
-		 * to create a CodedEventsLogger here. Adapt the inputs for your constraint.
-		 */
+		// Create CodedEvent objects to actually detect the events and visualize them
 		final GenericCodingEventDetector codingEventXDetector = new GenericCodingEventDetector(
 			constraintXDetector,
 			typeCode + "-START",
@@ -1259,15 +981,14 @@ public class CompleteMission extends SimpleMission {
 		final CodedEventsLogger eventXLogger = new CodedEventsLogger();
 		final EventDetector eventXDetector = eventXLogger.monitorDetector(codingEventXDetector);
 		
-		// Then you add your logger to the propagator, it will monitor the event coded
-		// by the codingEventDetector
+		// Add the logger to the propagator, it will monitor the event coded by the codingEventDetector
 		this.getSatellite().getPropagator().addEventDetector(eventXDetector);
 
 		return eventXLogger;
 	}
 
 	/**
-	 * Create logger for the sun incidence angle constraints.
+	 * Creates logger for the sun incidence angle constraints.
 	 *
 	 * @param targetSite Input target {@link Site}
 	 * @return The {@link CodedEventsLogger} used to monitor all events linked with
@@ -1275,15 +996,16 @@ public class CompleteMission extends SimpleMission {
 	 */
 	private CodedEventsLogger createIncidenceConstraintLogger(Site targetSite) {
 
+		// Define event type's code
 		final String typeCode = "INCIDENCE";
 
 		// Create the solar illumination detector
 		final EventDetector constraintXDetector = createIncidenceConstraintDetector(targetSite);
 
-		// Add detector to the propagator
+		// Add the detector to the propagator (We're adding one for each site)		
 		this.getSatellite().getPropagator().addEventDetector(constraintXDetector);
 
-		// Create coded events associated with the detector
+		// Create CodedEvent objects to actually detect the events and visualize them
 		final GenericCodingEventDetector codingEventXDetector =
 				new GenericCodingEventDetector(
 						constraintXDetector,
@@ -1292,19 +1014,17 @@ public class CompleteMission extends SimpleMission {
 						true,
 						typeCode + "-WINDOW"
 				);
-
 		final CodedEventsLogger eventXLogger = new CodedEventsLogger();
-
 		final EventDetector eventXDetector = eventXLogger.monitorDetector(codingEventXDetector);
 
-		// Add logger to the propagator
+		// Add the logger to the propagator, it will monitor the event coded by the codingEventDetector
 		this.getSatellite().getPropagator().addEventDetector(eventXDetector);
 
 		return eventXLogger;
 	}
 
 	/**
-	 * Create logger for the dazzling angle constraints.
+	 * Creates logger for the dazzling angle constraints.
 	 * The time windows returned correspond to the sensor being dazzled!!
 	 *
 	 * @param targetSite Input target {@link Site}
@@ -1313,26 +1033,16 @@ public class CompleteMission extends SimpleMission {
 	 */
 	private CodedEventsLogger createDazzlingConstraintLogger(Site targetSite) {
 
+		// Define event type's code
 		final String typeCode = "DAZZLE"; 
 
-		/**
-		 * Step 1 :
-		 * Here we deal with event detection. 
-		 */
+		// Initialise the appropriate constraint detector
 		final EventDetector constraintXDetector = createDazzlingConstraintDetector(targetSite);
 
-		/**
-		 * Step 2 :
-		 * When you have your detector, you can add it on an Orbit Propagator such as
-		 * the KeplerianPropagator of your Satellite.
-		 */
+		// Add the detector to the propagator (We're adding one for each site)		
 		this.getSatellite().getPropagator().addEventDetector(constraintXDetector);
 
-		/**
-		 * Step 3 :
-		 * Now you need to use the detector to create CodedEvent objects to actually
-		 * detect the events and visualize them.
-		 */
+		// Create CodedEvent objects to actually detect the events and visualize them
 		final GenericCodingEventDetector codingEventXDetector = new GenericCodingEventDetector(
 			constraintXDetector,
 			typeCode + "-START",
@@ -1342,8 +1052,8 @@ public class CompleteMission extends SimpleMission {
 		);
 		final CodedEventsLogger eventXLogger = new CodedEventsLogger();
 		final EventDetector eventXDetector = eventXLogger.monitorDetector(codingEventXDetector);
-		// Then you add your logger to the propagator, it will monitor the event coded
-		// by the codingEventDetector
+		
+		// Add the logger to the propagator, it will monitor the event coded by the codingEventDetector
 		this.getSatellite().getPropagator().addEventDetector(eventXDetector);
 
 		return eventXLogger;
